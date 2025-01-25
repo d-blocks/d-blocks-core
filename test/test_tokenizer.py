@@ -4,6 +4,20 @@ from loguru import logger
 from dblocks_core import exc
 from dblocks_core.deployer import tokenizer
 
+TRG = """
+REPLACE TRIGGER
+(
+    INSERT INTO {{env}}_stg_t.xxx (
+        
+    )
+    VALUES (
+        OLD_ROW.ACCOUNT_ID,
+        'UPDATE',
+    );
+)
+;
+"""
+
 
 def test_tokenizer():
     # we should throw on invalid input
@@ -50,8 +64,13 @@ def test_tokenizer():
             "select ( ; ) ';' ; a;",
             ["select ( ; ) ';' ;", "a;"],
         ],
+        [TRG, [TRG.strip()]],
     ]
     for i, (inp, expected) in enumerate(inputs):
         logger.debug(inp)
         statements = [s for s in tokenizer.tokenize_statemets(inp)]
+        assert len(statements) == len(expected)
         assert statements == expected, f"at test {i}"
+        # for i, stmt in enumerate(statements):
+        #     print(stmt)
+        #     print(expected[i])

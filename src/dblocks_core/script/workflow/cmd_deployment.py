@@ -164,14 +164,49 @@ def deploy_file_with_drop(
     )  # TODO - should NOT be hardcoded
     if len(script.strip()) == 0:
         raise exc.DOperationsError(f"empty file encountered: {file.as_posix()}")
-    deploy_script_with_drop(
-        script,
-        object_database=object_database,
-        object_name=object_name,
-        tgr=tgr,
-        ext=ext,
-        dry_run=dry_run,
-    )
+
+    # FIXME: if stored procedure, do not tokenize
+    if file.suffix == fsystem.PROC_SUFFIX:
+        deploy_procedure_with_drop(
+            script,
+            object_database=object_database,
+            object_name=object_name,
+            tgr=tgr,
+            ext=ext,
+            dry_run=dry_run,
+        )
+    else:
+        deploy_script_with_drop(
+            script,
+            object_database=object_database,
+            object_name=object_name,
+            tgr=tgr,
+            ext=ext,
+            dry_run=dry_run,
+        )
+
+
+def deploy_procedure_with_drop(
+    script: str,
+    object_database: str,
+    object_name: str,
+    *,
+    tgr: tagger.Tagger,
+    ext: AbstractDBI,
+    dry_run: bool = False,
+):
+    statements = [s for s in tokenizer.tokenize_statemets(script)]
+    logger.debug(f"statements: {len(statements)}")
+
+    statements = [tgr.expand_statement(s) for s in statements]
+    if not dry_run:
+        # FIXME: do not tokenize stored procedures - switch this off (fix tokenizer)
+        if obj := ext.get_identified_object(object_database, object_name):
+            ext.drop_identified_object(obj, ignore_errors=True)
+        ext.deploy_statements(script)
+    else:
+        # FIXME: do not tokenize stored procedures - switch this off (fix tokenizer)
+        logger.debug(f"dry run: {script}")
 
 
 def deploy_script_with_drop(
