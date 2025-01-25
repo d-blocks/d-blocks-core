@@ -51,3 +51,12 @@ build-backend = "poetry.core.masonry.api"
 enable = true
 vcs = "git"
 pattern = '(?P<base>\d+\.\d+\.\d+)'
+
+
+[tool.poetry]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Topic :: Database",
+    "Topic :: Software Development"
+]

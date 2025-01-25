@@ -3,8 +3,6 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.prompt import Prompt
-from rich.table import Table
 from typing_extensions import Annotated
 
 from dblocks_core import dbi, exc
