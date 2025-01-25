@@ -195,18 +195,17 @@ def deploy_procedure_with_drop(
     ext: AbstractDBI,
     dry_run: bool = False,
 ):
-    statements = [s for s in tokenizer.tokenize_statemets(script)]
+    statements = [script]
     logger.debug(f"statements: {len(statements)}")
 
     statements = [tgr.expand_statement(s) for s in statements]
     if not dry_run:
-        # FIXME: do not tokenize stored procedures - switch this off (fix tokenizer)
         if obj := ext.get_identified_object(object_database, object_name):
             ext.drop_identified_object(obj, ignore_errors=True)
-        ext.deploy_statements(script)
+        ext.deploy_statements(statements)
     else:
-        # FIXME: do not tokenize stored procedures - switch this off (fix tokenizer)
-        logger.debug(f"dry run: {script}")
+        for s in statements:
+            logger.debug(f"dry run: {s}")
 
 
 def deploy_script_with_drop(
