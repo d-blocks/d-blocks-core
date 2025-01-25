@@ -149,10 +149,6 @@ def translate_error():
             logger.debug(cause)
             raise exc.DBCannotConnect(err_desc) from err
 
-        if err_code in STATEMENT_ERRORS:
-            logger.debug(cause)
-            raise exc.DBStatementError(message=err_desc, statement=statement) from err
-
         # OperationalError with no error code -> exc.DBCannotConnect
         for dsc in (
             ERR_DSC_HOSTNAME_LOOKUP_FAILED,
@@ -164,7 +160,8 @@ def translate_error():
 
         # can not translate, dump full stack of the error
         # TODO: should this always default to a DBStatementError?
-        raise
+        logger.debug(cause)
+        raise exc.DBStatementError(message=err_desc, statement=statement) from err
 
 
 def get_description_from_exception(
