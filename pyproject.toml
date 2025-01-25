@@ -2,11 +2,18 @@
 name = "d-blocks-core"
 version = "0.0.0"
 description = ""
-authors = ["Nice Allucard <nice.allucard@gmail.com>"]
+authors = ["d-blocks-coder <d.blocks.coder@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [
     { include = "dblocks_core", from = "src" }, 
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Topic :: Database",
+    "Topic :: Software Development"
 ]
 
 [tool.poetry.scripts]
@@ -52,11 +59,3 @@ enable = true
 vcs = "git"
 pattern = '(?P<base>\d+\.\d+\.\d+)'
 
-
-[tool.poetry]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Topic :: Database",
-    "Topic :: Software Development"
-]
