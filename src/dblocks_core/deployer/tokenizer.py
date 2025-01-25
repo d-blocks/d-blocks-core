@@ -7,6 +7,8 @@ APOSTROPHE = "'"
 SLASH = "/"
 STAR = "*"
 NEW_LINE = "\n"
+LBRACKET = "("
+RBRACKET = ")"
 
 
 def tokenize_statemets(
@@ -43,6 +45,7 @@ def tokenize_statemets(
 
     # initial state
     in_string, in_comment, skip_next_n = False, False, 0
+    bracket_count = 0
     next_char = ""
     line_no = 1
     prev_stmt_idx, stmt_count = 0, 1
@@ -106,8 +109,20 @@ def tokenize_statemets(
                 raise exc.DParsingError(message)
             in_comment, skip_next_n = False, 1
 
+        if char == LBRACKET:
+            bracket_count += 1
+            continue
+        if char == RBRACKET:
+            bracket_count -= 1
+            continue
+
         # end of statement
-        if char == separator and not in_comment and not in_string:
+        if (
+            char == separator
+            and not in_comment
+            and not in_string
+            and bracket_count == 0
+        ):
             # get the statement, throw on empty statement
             # TODO this does not take into account comments,
             #      hence it is "semi" validating

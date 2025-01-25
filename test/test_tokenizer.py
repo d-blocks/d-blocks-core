@@ -19,7 +19,7 @@ def test_tokenizer():
             statements = [s for s in tokenizer.tokenize_statemets(inp)]
             assert statements == []
 
-    # works withh valid inputs
+    # works with valid inputs
     inputs = [
         [
             "1 ; 2; 3",
@@ -41,6 +41,14 @@ def test_tokenizer():
                 "select '/*;' /* ;' */\n;",
                 "select another thing;",
             ],
+        ],
+        [
+            "select ( ; )",
+            ["select ( ; )"],
+        ],
+        [
+            "select ( ; ) ';' ; a;",
+            ["select ( ; ) ';' ;", "a;"],
         ],
     ]
     for i, (inp, expected) in enumerate(inputs):
