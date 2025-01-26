@@ -135,7 +135,7 @@ class AbstractDBI(ABC):
     @abstractmethod
     def deploy_statements(self, statements: list[str]):
         """
-        Executes the statement giver
+        Executes the statement given
 
         Args:
             statement (str): _description_

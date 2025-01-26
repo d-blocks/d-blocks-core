@@ -27,7 +27,7 @@ def run_extraction(
     filter_names: str | None = None,
     filter_creator: str | None = None,
     # behaviour
-    log_each: int = 20,
+    log_each: int = 5,
     commit: bool = False,
 ):
     """

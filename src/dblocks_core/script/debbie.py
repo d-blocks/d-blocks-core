@@ -12,10 +12,16 @@ from typing_extensions import Annotated
 from dblocks_core import context, dbi, exc, writer
 from dblocks_core.config import config
 from dblocks_core.config.config import logger
+from dblocks_core.deployer import tokenizer
 from dblocks_core.git import git
 from dblocks_core.model import config_model
 from dblocks_core.parse import prsr_simple
-from dblocks_core.script.workflow import cmd_deployment, cmd_extraction, cmd_init
+from dblocks_core.script.workflow import (
+    cmd_deployment,
+    cmd_extraction,
+    cmd_init,
+    cmd_quickstart,
+)
 
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
@@ -148,7 +154,7 @@ def env_extract(
             "This process has a few risks:"
             "\n- it can run for a long time and could leave the repo in incosistent "
             "state."
-            "\n- directories that represent databases which are subject to extraction"
+            "\n- directories that represent databases which are subject to extraction "
             "will be dropped."
             "\n\nYou could run incremental extraction using --since flag instead."
             "\nIf this is the first time you run the xtraction, answer yes."
@@ -356,10 +362,13 @@ def _confirm_deployment(
         sleep(1)
 
 
+@app.command()
+def quickstart():
+    cmd_quickstart.quickstart()
+
+
 @exc.catch_our_errors()
 def main():
-    console.print(" dblc: ", style="bold blue", end="")
-    console.print(" dblocks_core features", style="bold")
     app()
 
 

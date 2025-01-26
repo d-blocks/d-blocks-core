@@ -460,9 +460,7 @@ class TeraDBI(contract.AbstractDBI):
         rows = [r[0].replace("\r", "\n") for r in con.execute(stmt).fetchall()]
         stmt = "".join(rows)
 
-        # normalization .... normally, we want the semicolon to be on separate line
-        # due to BTEQ handling of statements
-        stmt = stmt.strip().removesuffix(";") + "\n;\n"
+        stmt = stmt.strip().removesuffix(";") + ";\n"
         return stmt
 
     @translate_error()

@@ -317,7 +317,7 @@ class Repo:
         else:
             message = f"{message}"
 
-        logger.info(f"commit: {message}")
+        logger.info(f"{message}")
         if amend:
             return self.run_git_cmd(COMMIT, _SW_AMEND, "-m", message)
         return self.run_git_cmd(COMMIT, "-m", message)
