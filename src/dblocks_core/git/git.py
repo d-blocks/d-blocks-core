@@ -384,7 +384,7 @@ class Repo:
             return rslt
 
         if files is None:
-            logger.info("adding all files")
+            logger.debug("adding all files")
             rslt = [self.run_git_cmd(ADD, _SW_ALL)]
             return rslt
 
