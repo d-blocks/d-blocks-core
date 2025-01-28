@@ -16,12 +16,8 @@ from dblocks_core.deployer import tokenizer
 from dblocks_core.git import git
 from dblocks_core.model import config_model
 from dblocks_core.parse import prsr_simple
-from dblocks_core.script.workflow import (
-    cmd_deployment,
-    cmd_extraction,
-    cmd_init,
-    cmd_quickstart,
-)
+from dblocks_core.script.workflow import (cmd_deployment, cmd_extraction,
+                                          cmd_init, cmd_quickstart)
 
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
@@ -261,7 +257,7 @@ def env_deploy(
 
         cmd_deployment.make_report(cfg.report_dir, environment, failures)
         if len(failures) == 0:
-            console.print("Successfull run", style="bold green")
+            console.print("Successful run", style="bold green")
             ctx.done()
         else:
             console.print("DONE with errors", style="bold red")
