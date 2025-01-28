@@ -22,13 +22,15 @@ AUTHORIZATION = "AUTHORIZATION"
 
 TERADATA = "teradata"
 
-# this is used for validation in class IdentifiedObject, tread with care!
-OBJECT_TYPES = [
+MANAGED_TYPES = [
     DATABASE,
     TABLE,
-    COLUMN,
-    PROCEDURE,
     VIEW,
+    PROCEDURE,
+    JOIN_INDEX,
+    INDEX,
+    TRIGGER,
+    FUNCTION,
 ]
 
 ENV_PLACEHOLDER = "{{env}}"

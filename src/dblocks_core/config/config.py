@@ -214,12 +214,13 @@ def setup_logger(logconf: config_model.LoggingConfig | None):
     # intercept calls to stdlib logging
     logging.basicConfig(handlers=[_LoggingInterceptHandler()], level=0, force=True)
 
+    # FIXME: we want to get the version somehow, but this is far from good
     # log information about version of the tool
-    try:
-        version = metadata.version("dblocks_core")
-    except metadata.PackageNotFoundError:
-        version = "<version info not available>"
-    logger.info(f"dblc version: {version}")
+    # try:
+    #     version = metadata.version("dblocks_core")
+    # except metadata.PackageNotFoundError:
+    #     version = "<version info not available>"
+    # logger.info(f"dblc version: {version}")
 
 
 def _censore_keys(

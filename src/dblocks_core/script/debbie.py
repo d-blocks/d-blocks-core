@@ -196,14 +196,36 @@ def env_extract(
 
 @app.command()
 def env_deploy(
-    environment: str,
-    path: str,
-    assume_yes: bool = False,
-    countdown_from: int = 10,
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment you want to extract. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    path: Annotated[str, typer.Argument(help="Path to the package.")],
+    assume_yes: Annotated[
+        bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+    ] = False,
+    countdown_from: Annotated[
+        int, typer.Option(help="How long do we wait after confirmation was given.")
+    ] = 3,
+    if_exists: Annotated[
+        str,
+        typer.Option(
+            help="What to do if the object we try to deploy exists: raise/rename/drop"
+        ),
+    ] = "raise",
+    delete_databases: Annotated[
+        bool,
+        typer.Option(
+            help="USE CAREFULLY. Do we delete all objects from all databases in the batch?"
+        ),
+    ] = False,
+    log_each: Annotated[int, typer.Option(help="Log every n-th object")] = 20,
 ):
     """
-    Full deployment of a directory.
-    This action is destructive to your DB schema (use only in dev/test env).
+    Package deployment
     """
     # prepare config
     cfg = config.load_config()
@@ -216,23 +238,25 @@ def env_deploy(
         raise exc.DOperationsError(message)
 
     logger.warning("starting deployment")
+
     with context.FSContext(
         name=f"command-deploy-{environment}",
         directory=cfg.ctx_dir,
         no_exception_is_success=False,  # we have to confirm context deletion "by hand"
     ) as ctx:
-        # make sure we know what is being done!
-        if not assume_yes:
-            _confirm_deployment(environment, deploy_dir, env, countdown_from, ctx)
-
-        # point of no return
         ext = dbi.extractor_factory(env)
-        failures = cmd_deployment.deploy_dir(
+        failures = cmd_deployment.deploy_env(
             deploy_dir,
-            env=env,
             cfg=cfg,
+            env=env,
+            env_name=environment,
             ctx=ctx,
             ext=ext,
+            log_each=log_each,
+            if_exists=if_exists,
+            delete_databases=delete_databases,
+            assume_yes=assume_yes,
+            countdown_from=countdown_from,
         )
 
         cmd_deployment.make_report(cfg.report_dir, environment, failures)
@@ -304,67 +328,19 @@ def ctx_drop(
     ctx_file.unlink()
 
 
-def _confirm_deployment(
-    environment: str,
-    deploy_dir: Path,
-    env: config_model.EnvironParameters,
-    countdown_from: int,
-    ctx: context.FSContext,
-):
-    ctx_len = len(ctx.ctx_data.checkpoints)
-
-    # build params table
-    params = Table(title="Parameters")
-    params.add_column("parameter")
-    params.add_column("value")
-    for (
-        k,
-        v,
-    ) in (
-        ("environment", environment),
-        ("directory", deploy_dir.as_posix()),
-        ("env.host", env.host),
-        ("env.username", env.username),
-        ("# of actions that succeded before", str(ctx_len)),
-    ):
-        params.add_row(k, v)
-
-    # printout of params
-    if ctx_len > 0:
-        console.print(
-            "*** This is a restart of unfinished action ***",
-            style="bold red",
-        )
-        console.print("Use the ctx-list command to see what contexts exist")
-    else:
-        console.print("This is a clean start", style="bold green")
-
-    console.print("Deployment with these parameters:", style="bold")
-    console.print(params)
-    console.print("This is a destructive action.")
-    console.print("- objects will be DROPPED")
-    console.print("- objects will be CREATED")
-    console.print("- in fact, we will try to sync target databases against metadata")
-    console.print("  with NO regard to data safety !!!", style="bold red")
-    console.print("=== STOP AND THINK! ===", style="bold red")
-    console.print("If you answer 'yes', countdown will ensue.")
-    console.print("You will have one last chance to cancel the operation.")
-
-    # confirm
-    really = Prompt.ask("Are you sure? (yes/no)", default="no").strip()
-    if really != "yes":
-        logger.error(f"action canceled by prompt: {really}")
-        sys.exit(1)
-
-    # countdown
-    for i in range(countdown_from, -1, -1):
-        console.print(f"{i} ...", style="bold red")
-        sleep(1)
-
-
 @app.command()
 def quickstart():
     cmd_quickstart.quickstart()
+
+
+@app.command()
+def pkg_deploy(
+    environment: str,
+    path: str,
+    assume_yes: bool = False,
+    countdown_from: int = 10,
+):
+    pass
 
 
 @exc.catch_our_errors()

@@ -38,6 +38,17 @@ class AbstractDBI(ABC):
         ...
 
     @abstractmethod
+    def rename_identified_object(
+        self,
+        obj: meta_model.IdentifiedObject,
+        new_name: str,
+        *,
+        ignore_errors: bool = False,
+    ):
+        """Renames the object."""
+        ...
+
+    @abstractmethod
     def get_identified_object(
         self,
         database_name: str,

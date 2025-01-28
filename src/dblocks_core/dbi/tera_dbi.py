@@ -314,6 +314,30 @@ class TeraDBI(contract.AbstractDBI):
             con.execute(stmt)
 
     @translate_error()
+    def rename_identified_object(
+        self,
+        obj: meta_model.IdentifiedObject,
+        new_name: str,
+        *,
+        ignore_errors: bool = False,
+    ):
+        """Renames the object."""
+        object_type = obj.object_type
+        sql = (
+            f"""RENAME {object_type} "{obj.database_name}"."{obj.object_name}" """
+            f"""TO "{obj.database_name}"."{new_name}";"""
+        )
+        try:
+            with translate_error():
+                with self.engine.connect() as con:
+                    logger.debug(sql)
+                    con.exec_driver_sql(sql)
+        except exc.DBStatementError as err:
+            if not ignore_errors:
+                raise
+            logger.warning(str(err))
+
+    @translate_error()
     def drop_identified_object(
         self,
         obj: meta_model.IdentifiedObject,
