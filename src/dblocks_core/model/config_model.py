@@ -144,9 +144,10 @@ class LoggingConfig:
 @frozen
 class PackagerConfig:
     package_dir: Path = field(default=Path("pkg"), converter=Path)
-    steps_subdir: Path = field(default=Path("db/Teradata"), converter=Path)
+    steps_subdir: Path = field(default=Path("db/teradata"), converter=Path)
     safe_deletion_limit: int = field(default=50)
     interactive: bool = field(default=True)
+    case_insensitive_dirs: bool = field(default=True)
 
 
 @frozen

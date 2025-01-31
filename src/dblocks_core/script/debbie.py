@@ -16,8 +16,13 @@ from dblocks_core.deployer import tokenizer
 from dblocks_core.git import git
 from dblocks_core.model import config_model
 from dblocks_core.parse import prsr_simple
-from dblocks_core.script.workflow import (cmd_deployment, cmd_extraction,
-                                          cmd_init, cmd_quickstart)
+from dblocks_core.script.workflow import (
+    cmd_deployment,
+    cmd_extraction,
+    cmd_init,
+    cmd_pkg_deployment,
+    cmd_quickstart,
+)
 
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
@@ -265,6 +270,63 @@ def env_deploy(
 
 
 @app.command()
+def pkg_deploy(
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment you want to extract. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    path: Annotated[str, typer.Argument(help="Path to the package.")],
+    assume_yes: Annotated[
+        bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+    ] = False,
+    countdown_from: Annotated[
+        int, typer.Option(help="How long do we wait after confirmation was given.")
+    ] = 3,
+    if_exists: Annotated[
+        str,
+        typer.Option(
+            help="What to do if the object we try to deploy exists: raise/rename/drop"
+        ),
+    ] = "raise",
+):
+    """
+    Package deployment
+    """
+    # prepare config
+    cfg = config.load_config()
+    env = config.get_environment_from_config(cfg, environment)
+    pkg_path = Path(path)
+    pkg_name = pkg_path.name
+
+    # sanity check
+    if not pkg_path.is_dir():
+        message = f"not a dir: {pkg_path.as_posix()}"
+        raise exc.DOperationsError(message)
+
+    # context
+    ctx_dir = pkg_path / "ctx"
+    ctx_dir.mkdir(exist_ok=True)
+
+    # tagger
+    logger.info(pkg_path)
+    with context.FSContext(
+        name=f"pkg-deploy-{pkg_name}@{environment}",
+        directory=ctx_dir,
+        no_exception_is_success=False,  # we have to confirm context deletion "by hand"
+    ) as ctx:
+        ext = dbi.extractor_factory(env)
+        cmd_pkg_deployment.cmd_pkg_deploy(
+            pkg_path,
+            pkg_cfg=cfg.packager,
+            env_cfg=env,
+            ctx=ctx,
+        )
+
+
+@app.command()
 def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
     cfg = config.load_config()
@@ -327,16 +389,6 @@ def ctx_drop(
 @app.command()
 def quickstart():
     cmd_quickstart.quickstart()
-
-
-@app.command()
-def pkg_deploy(
-    environment: str,
-    path: str,
-    assume_yes: bool = False,
-    countdown_from: int = 10,
-):
-    pass
 
 
 @exc.catch_our_errors()

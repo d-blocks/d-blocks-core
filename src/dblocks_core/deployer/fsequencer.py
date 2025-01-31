@@ -5,6 +5,7 @@ from typing import Generator
 from attrs import define, field
 
 from dblocks_core import exc, tagger
+from dblocks_core.config.config import logger
 from dblocks_core.deployer import tokenizer
 
 
@@ -48,6 +49,7 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
     # scan folders in root - each folder is a DeploymentStep
     errs = []
     steps: list[DeploymentStep] = []
+    logger.info(f"scanning: {root_dir}")
     for d in sorted(root_dir.glob("*")):
         if d.is_file():
             errs.append(f"- unexpected file: {d.as_posix()}")
