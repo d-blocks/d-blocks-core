@@ -56,8 +56,11 @@ def deploy_env(
         tagging_strip_db_with_no_rules=env.tagging_strip_db_with_no_rules,
     )
 
-    # FIXME: this should be a separate function that returns the batch
-    # read all file names
+    # FIXME:    this should be a separate function that returns the batch
+    #           read all file names
+
+    # FIXME:    this also should detect if we are deploying a proper "batch",
+    #           or if we deploy the "data" dir prepared by the writer
     queue = [
         f
         for f in deploy_dir.rglob("*")
@@ -101,7 +104,6 @@ def deploy_env(
 
     # drop all objects from the database
     if delete_databases:
-        input(">>> for sure?")
         logger.warning("dropping databases")
         for db in databases:
             chk = f"delete database {db}"
