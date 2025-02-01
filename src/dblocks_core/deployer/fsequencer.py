@@ -7,6 +7,8 @@ from attrs import define, field
 from dblocks_core import exc, tagger
 from dblocks_core.config.config import logger
 from dblocks_core.deployer import tokenizer
+from dblocks_core.model import meta_model
+from dblocks_core.writer import fsystem
 
 
 @define
@@ -17,10 +19,20 @@ class DeploymentStatement:
         return hashlib.md5(self.sql.encode()).hexdigest()
 
 
+def _must_be_deployable(self, attribute, value):
+    if not value in meta_model.DEPLOYABLE_TYPES:
+        err = ValueError(
+            f"expected one of: {meta_model.DEPLOYABLE_TYPES}; got: {value}"
+        )
+        logger.error(err)
+        raise err
+
+
 @define
 class DeploymentFile:
     default_db: str | None
     file: Path = field(converter=Path)
+    file_type: str | None = field(validator=None)
 
     def statements(
         self,
@@ -77,6 +89,14 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
             # skip folders
             if f.is_dir():
                 continue
+
+            # one of supported file types
+            try:
+                file_type = fsystem.EXT_TO_TYPE[f.suffix]
+            except KeyError:
+                logger.warning(f"skipping file with unsupported type ({f.suffix}): {f}")
+                continue
+
             # for files that are not directly in the step dir,
             # we assume that the name of the parent is name of the db
             if f.parent.absolute() == step.location.absolute():
@@ -92,6 +112,7 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
                 DeploymentFile(
                     default_db=db,
                     file=f,
+                    file_type=file_type,
                 )
             )
         step.files = files

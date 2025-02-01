@@ -19,6 +19,8 @@ TRIGGER_SUFFIX = ".trg"
 FUNCTION_SUFFIX = ".func"
 TYPE_SUFFIX = ".type"
 AUTH_SUFFIX = ".auth"
+GENERIC_SQL_SUFFIX = ".sql"
+GENERIC_BTEQ_SUFFIX = ".bteq"
 
 TYPE_TO_EXT = {
     meta_model.TABLE: TABLE_SUFFIX,
@@ -32,6 +34,8 @@ TYPE_TO_EXT = {
     meta_model.FUNCTION: FUNCTION_SUFFIX,
     meta_model.TYPE: TYPE_SUFFIX,
     meta_model.AUTHORIZATION: AUTH_SUFFIX,
+    meta_model.GENERIC_SQL: GENERIC_SQL_SUFFIX,
+    meta_model.GENERIC_BTEQ: GENERIC_BTEQ_SUFFIX,
 }
 
 EXT_TO_TYPE = {v: k for k, v in TYPE_TO_EXT.items()}

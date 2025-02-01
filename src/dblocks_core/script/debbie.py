@@ -323,6 +323,8 @@ def pkg_deploy(
             pkg_cfg=cfg.packager,
             env_cfg=env,
             ctx=ctx,
+            if_exists=if_exists,
+            dry_run=True,  # FIXME: add this as a switch
         )
 
 

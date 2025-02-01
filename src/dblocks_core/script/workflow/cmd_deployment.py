@@ -16,10 +16,10 @@ from dblocks_core.deployer import tokenizer
 from dblocks_core.model import config_model, meta_model
 from dblocks_core.writer import fsystem
 
+# FIXME: this is also defined in cmd_pkg_deployment... violates DRY principle
 RAISE_STRATEGY = "raise"
 DROP_STRATEGY = "drop"
 RENAME_STRATEGY = "rename"
-
 _DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
 _DEPLOYMENT_STRATEGIES = [DROP_STRATEGY, RENAME_STRATEGY, RAISE_STRATEGY]
 _DTTM_FMT = "%Y%m%d%H%M%S"

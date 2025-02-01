@@ -22,6 +22,7 @@ AUTHORIZATION = "AUTHORIZATION"
 
 TERADATA = "teradata"
 
+# typoes of objects debbie can manage
 MANAGED_TYPES = [
     DATABASE,
     TABLE,
@@ -32,6 +33,11 @@ MANAGED_TYPES = [
     TRIGGER,
     FUNCTION,
 ]
+
+# types of object debbie can deploy
+GENERIC_SQL = "SQL"
+GENERIC_BTEQ = "BTEQ"
+DEPLOYABLE_TYPES = [*MANAGED_TYPES, GENERIC_SQL, GENERIC_BTEQ]
 
 ENV_PLACEHOLDER = "{{env}}"
 
