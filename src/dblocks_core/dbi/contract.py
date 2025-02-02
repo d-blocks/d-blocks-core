@@ -154,3 +154,17 @@ class AbstractDBI(ABC):
 
     @abstractmethod
     def test_connection(self): ...
+
+    @abstractmethod
+    def dispose(self):
+        """
+        Dispose of the engine (self.engine.dispose())
+        """
+        ...
+
+    @abstractmethod
+    def change_database(self, database_name: str):
+        """
+        Change default database
+        """
+        ...

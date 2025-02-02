@@ -106,7 +106,7 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
 
             # name of the db can tagged be placeholder
             if tgr is not None and db is not None:
-                db = tgr.tag_database(db)
+                db = tgr.expand_statement(db)
 
             files.append(
                 DeploymentFile(

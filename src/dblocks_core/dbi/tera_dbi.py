@@ -15,6 +15,8 @@ from dblocks_core.config.config import logger
 from dblocks_core.dbi import contract
 from dblocks_core.model import meta_model
 
+_LOG_SEPARATOR = "\n" + "-" * 80 + "\n"
+
 # this is used to decide if object details are in dbc.tablesV
 _CAN_HAVE_COMMENT = [meta_model.TABLE, meta_model.VIEW, meta_model.PROCEDURE]
 _CAN_HAVE_COLUMNS = [meta_model.TABLE, meta_model.VIEW]
@@ -243,7 +245,7 @@ class TeraDBI(contract.AbstractDBI):
                 # skip sqlalchemy compilation step, send the query directly
                 # thus, sqlalchemy wont't try to compile named parameters
                 # (therefore compilation of stored procedures should work)
-                logger.debug(sql)
+                logger.debug(_LOG_SEPARATOR + sql + _LOG_SEPARATOR)
                 con.exec_driver_sql(sql)
 
     @translate_error()
@@ -674,6 +676,20 @@ class TeraDBI(contract.AbstractDBI):
         logger.info("testing connection")
         with self.engine.connect():
             logger.info("success")
+
+    @translate_error()
+    def dispose(self):
+        logger.info("dispose of the sql engine")
+        self.engine.dispose()
+
+    def change_database(self, database_name):
+        if not database_name:
+            logger.warning(f"can not change database: {database_name=}")
+            return
+        with self.engine.connect() as con:
+            stmt = f"database {database_name};"
+            logger.debug(_LOG_SEPARATOR + stmt + _LOG_SEPARATOR)
+            con.exec_driver_sql(stmt)
 
 
 # dbc.tablesV.tableKind: https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/Data-Dictionary/View-Column-Values/TableKind-Column

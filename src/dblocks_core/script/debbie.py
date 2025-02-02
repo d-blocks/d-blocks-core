@@ -279,6 +279,13 @@ def pkg_deploy(
         ),
     ],
     path: Annotated[str, typer.Argument(help="Path to the package.")],
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            help="Dry run only simulates deployment but does not change state "
+            "of the environment."
+        ),
+    ] = False,
     assume_yes: Annotated[
         bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
     ] = False,
@@ -324,7 +331,7 @@ def pkg_deploy(
             env_cfg=env,
             ctx=ctx,
             if_exists=if_exists,
-            dry_run=True,  # FIXME: add this as a switch
+            dry_run=dry_run,
         )
 
 

@@ -67,17 +67,17 @@ def cmd_pkg_deploy(
     logger.info(f"scanning steps dir: {root_dir}")
     batch = fsequencer.create_batch(root_dir, tgr)
 
+    if dry_run:
+        logger.warning("DRY RUN: we will simulate the deployment.")
+
     for step in batch.steps:
         stp_chk = step.location.as_posix()
         if ctx.get_checkpoint(stp_chk):
-            logger.warning(f"skipping deployment step: {step.location.name}")
+            logger.warning(f"+--  skipping deployment step: {step.location.name}")
             continue
 
-        logger.info(f"+--+ start deployment step: {step.location.name}")
-
-        # get a new session
-
         # deploy all objects
+        logger.info(f"+--+ start    deployment step: {step.location.name}")
         prev_db = None
         for file in step.files:
             file_chk = stp_chk + "->" + file.file.as_posix()
@@ -89,9 +89,8 @@ def cmd_pkg_deploy(
             # switch default db to file.default_db
 
             if file.default_db is not None and prev_db != file.default_db:
-                logger.warning(
-                    f"   +-- IMPLEMENT CHANGE OF DEFAULT DB: {file.default_db}"
-                )
+                logger.warning(f"   +-- change database: {file.default_db}")
+                ext.change_database(file.default_db)
 
             # get default db
             deploy_script_with_conflict_strategy(
@@ -105,7 +104,7 @@ def cmd_pkg_deploy(
             ctx.set_checkpoint(file_chk)
 
         # force logoff
-        logger.warning("+-- IMPLEMENT LOGOFF at the end of step")
+        ext.dispose()
         ctx.set_checkpoint(stp_chk)
 
     ctx.done()
@@ -191,13 +190,9 @@ def deploy_script_with_conflict_strategy(
         statements = [script]
     else:
         statements = [s for s in tokenizer.tokenize_statemets(script)]
-    statements = [tgr.expand_statement(s) for s in statements]
 
-    # bail out if the run is dummy (dry run)
-    if dry_run:
-        for s in statements:
-            logger.debug(f"dry run: {s}")
-        return
+    # FIXME: this only allows for checkpoint with granularity per file, do we want to prep checkpoints per statement ???
+    statements = [tgr.expand_statement(s) for s in statements]
 
     # check the existence of the object based on the conflict strategy
     obj: meta_model.IdentifiedObject | None = None
@@ -206,6 +201,7 @@ def deploy_script_with_conflict_strategy(
         and object_database is not None  # database must be known
         and object_name is not None  # object name must be known
     )
+
     if check_if_exists:
         logger.debug(f"checking if the object exists: {object_database}.{object_name}")
         obj = ext.get_identified_object(object_database, object_name)
@@ -213,7 +209,7 @@ def deploy_script_with_conflict_strategy(
 
     # implement conflict strategy
     if obj:
-        logger.info(
+        logger.warning(
             f"conflict: {obj.object_type} {object_database}.{object_name}: {if_exists=}"
         )
 
@@ -230,16 +226,19 @@ def deploy_script_with_conflict_strategy(
             raise exc.DOperationsError(msg)
         elif if_exists == DROP_STRATEGY:
             logger.info(f"drop: {object_database}.{object_name}")
-            ext.drop_identified_object(obj, ignore_errors=True)
+            if not dry_run:
+                ext.drop_identified_object(obj, ignore_errors=True)
         elif if_exists == RENAME_STRATEGY:
             # FIXME: maybe have a few possible naming schemes ... who knows ...
             new_name = "_" + object_name + "_" + datetime.now().strftime(_DTTM_FMT)
             logger.info(f"rename: {object_database}.{object_name} => {new_name}")
             # FIXME: what happens, when the object changed type? Table to views, etc.
             # FIXME: move old data from the object
-            ext.rename_identified_object(obj, new_name, ignore_errors=False)
+            if not dry_run:
+                ext.rename_identified_object(obj, new_name, ignore_errors=False)
         else:
             raise NotImplementedError(f"unsupported: {if_exists=}")
 
     # deploy the script
-    ext.deploy_statements(statements)
+    if not dry_run:
+        ext.deploy_statements(statements)
