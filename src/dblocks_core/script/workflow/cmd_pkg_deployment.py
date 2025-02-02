@@ -208,6 +208,7 @@ def deploy_script_with_conflict_strategy(
         logger.debug(obj)
 
     # implement conflict strategy
+    # FIXME: for all types of objects, with no exceptions ???
     if obj:
         logger.warning(
             f"conflict: {obj.object_type} {object_database}.{object_name}: {if_exists=}"
