@@ -147,6 +147,10 @@ def translate_error():
             logger.debug(cause)
             raise exc.DBObjectDoesNotExist(err_desc) from err
 
+        # no access to ...
+        if err_code == ERR_CODE_NO_ACCESS:
+            raise exc.DBAccessRightsError(err_desc) from err
+
         # exc.DBCannotConnect - different causes we have seen ...
         if err_code == ERR_CODE_USER_PASSWORD_INVALID:
             logger.debug(cause)
@@ -303,6 +307,10 @@ class TeraDBI(contract.AbstractDBI):
                 basic_definition=ddl,
                 additional_details=details,
             )
+        except exc.DBAccessRightsError as err:
+            logger.error(err.message)
+            return None
+
         except exc.DBObjectDoesNotExist as err:
             logger.debug(err)
             return None

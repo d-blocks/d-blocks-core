@@ -43,6 +43,10 @@ class DBError(DBlocksError):
     pass
 
 
+class DBAccessRightsError(DBError):
+    pass
+
+
 class DBStatementError(DBError):
     "generic error caused by an invalid statement"
 
