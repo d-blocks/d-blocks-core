@@ -26,7 +26,7 @@ ERR_CODE_USER_PASSWORD_INVALID = "8017"
 ERR_CODE_NO_STATS_DEFINED = "3624"
 ERR_CODE_DOES_NOT_EXIST = "3807"
 ERR_CODE_SYNTAX_ERROR = "3706"
-
+ERR_CODE_NO_ACCESS = "3523"
 ERR_CODE_REF_INTEGRITY_VIOLATION = "5313"
 ERR_CODE_COLUMN_NOT_FOUND = "5628"
 
@@ -93,7 +93,8 @@ def ignore_errors(err_list: str | list[str | int]):
         # we have to get error number from first line of the error string
         err_code = get_error_code_from_exception(cause)
         if err_code in err_list:
-            logger.debug(f"ignoring error: {err_code}")
+            err_desc = get_description_from_exception(cause)
+            logger.warning(f"ignoring error: {err_code}: {err_desc}")
             return
         raise
 
@@ -588,7 +589,7 @@ class TeraDBI(contract.AbstractDBI):
         sql = f"""show stats on "{database_name}"."{object_identification}";"""
         stmt = sa.text(sql)
 
-        with ignore_errors(ERR_CODE_NO_STATS_DEFINED):
+        with ignore_errors([ERR_CODE_NO_STATS_DEFINED, ERR_CODE_NO_ACCESS]):
             all_stats = ""
             logger.debug(stmt)
             with self.engine.connect() as con:
