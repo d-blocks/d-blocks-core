@@ -122,7 +122,7 @@ def get_default_config() -> str:
     return dedent(
         """
         # this value is important to keep track of changes of the configuration schema
-        # do not change, unless you are migrating to a different version of dblc utility
+        # do not change, unless you are migrating to a different version of debbie utility
         config_version = "1.0.0"
 
         # context directrory
@@ -134,28 +134,6 @@ def get_default_config() -> str:
         # report directory - where reports can be stored
         # the directory should NOT be version controlled
         report_dir = "./context/report"
-
-        
-        [ packager ]        
-        # package directory - where newly created packages are stored
-        # this directory SHOULD BE version controlled; 
-        # can be in completely different direcxtory (different repo)
-        package_dir = "./pkg"
-
-        # every package will store deployment steps under this subdir
-        steps_subdir = "db/Teradata"
-
-        # in case where we attempt to overwrite existing package, we assume
-        # that it is safe to delete package directory, if it contains less then N files
-        # racionale: we really, really do not want to drop entire gir repo (or worse)
-        #            by accident!
-        safe_deletion_limit = 50
-
-        # if deletion of the directory is not safe, we either
-        #   a) ask if we want to proceed (interactive = true), or
-        #   b) throw an exception (interactive = false)
-        interactive = true
-        
 
 
         [ logging ]
@@ -278,10 +256,30 @@ def get_default_config() -> str:
         # allow this behaviour?
         tagging_strip_db_with_no_rules = false
 
-
         # configuration of tagging variables for the environment
         [ environments.dev.tagging_variables ]        
         env_db = "P01"                      # covers names such as P01_TGT, P01_STG, etc.
         env_usr = "UP01"                    # covers names such as UP01_LOAD, UP01_MAINT, etc.
+
+        [ packager ]        
+        # package directory - where newly created packages are stored
+        # this directory SHOULD BE version controlled; 
+        # can be in completely different direcxtory (different repo)
+        package_dir = "./pkg"
+
+        # every package will store deployment steps under this subdir
+        steps_subdir = "db/Teradata"
+
+        # in case where we attempt to overwrite existing package, we assume
+        # that it is safe to delete package directory, if it contains less then N files
+        # racionale: we really, really do not want to drop entire gir repo (or worse)
+        #            by accident!
+        safe_deletion_limit = 50
+
+        # if deletion of the directory is not safe, we either
+        #   a) ask if we want to proceed (interactive = true), or
+        #   b) throw an exception (interactive = false)
+        interactive = true
+                
 """
     )
