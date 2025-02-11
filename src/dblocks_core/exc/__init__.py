@@ -65,6 +65,11 @@ class DBObjectDoesNotExist(DBError):
     pass
 
 
+class DBNoStatsDefined(DBError):
+    "No statistics defined for the object."
+    pass
+
+
 class DParsingError(DBlocksError):
     "Can not parse or tokenize the input."
     pass
