@@ -99,7 +99,7 @@ def git_copy_changed(
 
 @exc.catch_our_errors()
 def main():
-    console.print(" dblce: ", style="bold yellow", end="")
+    console.print(" wasp: ", style="bold yellow", end="")
     console.print("dblocks_core experimental features", style="bold")
     app()
 

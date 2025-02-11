@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Tuple
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -36,7 +37,7 @@ def copy_changed_files(
         logger.error("no changes found")
         return
 
-    copy_files = []
+    copy_files: list[Tuple[Path, Path]] = []
     for change in changes:
         # only files in the source path
         if not change.abs_path.is_relative_to(absolute_source_path):
@@ -66,4 +67,15 @@ def copy_changed_files(
             return
 
     for source, target in copy_files:
+        if not source.exists():
+            logger.error(f"path does not exist: {source}")
+            continue
+
+        if source.is_dir():
+            logger.warning(f"path is a dir, recursive copy: {source}")
+            target.mkdir(exist_ok=True, parents=True)
+            shutil.copytree(source, target, dirs_exist_ok=True)
+            continue
+
+        # source path is a dir
         shutil.copy(source, target)

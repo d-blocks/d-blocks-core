@@ -109,7 +109,7 @@ class GitResult:
 
 
 @frozen
-class GitChangedFile:
+class GitChangedPath:
     change: FileStatus
     rel_path: Path
     abs_path: Path
@@ -257,7 +257,7 @@ class Repo:
 
         return self.run_git_cmd(INIT)
 
-    def changed_files(self, *, commit: str | None = None) -> list[GitChangedFile]:
+    def changed_files(self, *, commit: str | None = None) -> list[GitChangedPath]:
         if commit is None:
             result = self.run_git_cmd(STATUS, _SW_PORCELAIN)
         else:
@@ -283,7 +283,7 @@ class Repo:
             rel_path = Path(line[3:].strip())
             abs_path = self.repo_dir / rel_path
             changes.append(
-                GitChangedFile(
+                GitChangedPath(
                     change=action,
                     rel_path=rel_path,
                     abs_path=abs_path,
