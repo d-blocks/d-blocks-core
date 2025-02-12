@@ -104,7 +104,7 @@ Once you've updated the configuration, verify that everything is set up correctl
 debbie cfg-check
 debbie env-test-connection d-blocks-demo
 ```
-If these commands run successfully, your environment is ready to use **D-Blocks** for database management.
+If these commands run successfully, your environment is ready to use **d-blocks** for database management.
 
 ### **5. Basic Usage**
 
