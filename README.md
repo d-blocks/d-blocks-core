@@ -47,8 +47,8 @@ Install d-blocks-core using pip:
 pip install d-blocks-core
 ```
 
-### **3. Clone Demo Repository**
-To quickly test the capabilities of D-Blocks, we recommend cloning our demo project repository. This repository contains a small data warehouse definition, including:
+### **3. (Optional) Clone Demo Repository**
+If you do not have an existing environment with database objects to test the capabilities of d-blocks, you can use our demo project repository. This repository contains a small data warehouse definition, including:
 - **DDL scripts to initialize the environment**
 - **DDL scripts for database objects** (tables, views, indexes, etc.)
 
@@ -58,6 +58,7 @@ git clone https://github.com/d-blocks/d-blocks-test.git
 ```
 
 Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-test.git), but we encourage users to use Git for better version control and easy updates.
+
 
 ### **4. Basic Usage**
 
