@@ -78,20 +78,23 @@ After cloning the demo repository, configure and test the utility by following t
    # Set authentication info for your machine
    host = "your_host_machine"
    username = "your_user"
-   password = "your_password"        # We keep password here for demo purposes - it is strongly recommended to define user password via environment variable
+   password = "your_password"        # We keep password here for demo purposes.
+                                     # It is strongly recommended to define user 
+									 # password via environment variable.
 
    extraction.databases = [ "dev_admin" ]   # This is the root database - under 
-                                            # this, we create the demo environment
+                                            # it, we create the demo environment
    git_branch = "master"
    writer.target_dir="./teradata-code"
    tagging_rules = [ "{{env}}%" ]
 
+   # Code in Git is typically environment agnostic - it does not contain 
+   # any specific environment values like database prefixes. Based on 
+   # tagging_rules, we replace any database prefix "dev" with {{env}}
+   # and contrary once deploying agnostic code from Git to d-blocks-demo
+   # environment we replace {{env}} by "dev" value.
    [ environments.d-blocks-demo.tagging_variables ]
-   env = "dev"   # Code in Git is typically environment agnostic - it does not contain 
-                 # any specific environment values like database prefixes. Based on 
-				 # tagging_rules, we replace any database prefix "dev" with {{env}}
-				 # and contrary once deploying agnostic code from Git to d-blocks-demo
-				 # environment we replace {{env}} by "dev" value.
+   env = "dev"
    ```
 4. Follow the instructions in the configuration file and fill in the correct **host name, user name, and database password**.
 
