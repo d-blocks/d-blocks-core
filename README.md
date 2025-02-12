@@ -1,5 +1,5 @@
 # <p align="center">
-  <img src="docs/images/dblocks_logo.png" alt="d-blocks logo" />
+  <img src="docs/images/d_blocks_logo.png" alt="d-blocks logo" />
 </p>
 
 # d-blocks: Bringing Teradata Code Under Control
