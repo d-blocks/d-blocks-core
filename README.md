@@ -1,4 +1,4 @@
-# <p align="center">
+<p align="center">
   <img src="docs/images/d_blocks_logo.png" alt="D-Blocks Logo" width="300" />
 </p>
 
