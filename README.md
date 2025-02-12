@@ -67,7 +67,7 @@ After cloning the demo repository, configure and test the utility by following t
    ```bash
    cd d-blocks-test
    ```
-2. Locate the configuration file **[dblocks.toml](./dblocks.toml)** in the root directory and edit it.
+2. Locate the configuration file **dblocks.toml** in the root directory and edit it.
 3. The configuration file looks like this:
    ```toml
    config_version = "1.0.0"
