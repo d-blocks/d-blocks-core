@@ -76,7 +76,7 @@ After cloning the demo repository, configure and test the utility by following t
    [ environments.d-blocks-demo ]
 
    # Set authentication info for your machine
-   host = "your_host_machine"
+   host = "your_machine_host"
    username = "your_user"
    password = "your_password"        # We keep password here for demo purposes.
                                      # It is strongly recommended to define user 
