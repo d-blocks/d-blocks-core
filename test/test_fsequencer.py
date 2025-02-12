@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from dblocks_core.deployer import fsequencer
+from dblocks_core.model import meta_model
 
 fixtures_dir = Path(__file__).parent / "fixtures" / "fsequencer" / "db"
 
@@ -21,12 +22,14 @@ def test_sequencer1():
                         file=Path(
                             "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/10-step1/1.tab"
                         ),
+                        file_type=meta_model.TABLE,
                     ),
                     fsequencer.DeploymentFile(
                         default_db=None,
                         file=Path(
                             "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/10-step1/2.sql"
                         ),
+                        file_type=meta_model.GENERIC_SQL,
                     ),
                 ],
             ),
@@ -41,12 +44,14 @@ def test_sequencer1():
                         file=Path(
                             "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/20-step2/db1/1.tab"
                         ),
+                        file_type=meta_model.TABLE,
                     ),
                     fsequencer.DeploymentFile(
                         default_db="db2",
                         file=Path(
                             "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/20-step2/db2/1.tab"
                         ),
+                        file_type=meta_model.TABLE,
                     ),
                 ],
             ),
