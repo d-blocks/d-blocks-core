@@ -80,7 +80,7 @@ After cloning the demo repository, configure and test the utility by following t
    username = "your_user"
    password = "your_password"        # We keep password here for demo purposes.
                                      # It is strongly recommended to define user 
-									 # password via environment variable.
+                                     # password via environment variable.
 
    extraction.databases = [ "dev_admin" ]   # This is the root database - under 
                                             # it, we create the demo environment
