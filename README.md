@@ -54,13 +54,51 @@ To ensure a smooth testing experience, clone our demo project repository, which 
 
 Clone the repository using Git:
 ```bash
-git clone https://github.com/d-blocks/d-blocks-test.git
+git clone https://github.com/d-blocks/d-blocks-demo.git
 ```
 
-Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-test.git), but we encourage users to use Git for better version control and easy updates.
+Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-demo.git), but we encourage users to use Git for better version control and easy updates.
 
+### **4. Configure and Test the Utility**
+After cloning the demo repository, configure and test the utility by following these steps:
 
-### **4. Basic Usage**
+#### **Edit the Configuration File**
+1. Navigate to the directory where you cloned the demo repository:
+   ```bash
+   cd d-blocks-test
+   ```
+2. Locate the configuration file **[dblocks.toml](./dblocks.toml)** in the root directory and edit it.
+3. The configuration file looks like this:
+   ```toml
+   config_version = "1.0.0"
+
+   # Configuration for our demo environment called d-blocks-demo
+   [ environments.d-blocks-demo ]
+
+   # Set authentication info for your machine
+   host = "your_host_machine"
+   username = "your_user"
+   password = "your_password"        # We keep password here for demo purposes - it is strongly recommended to define user password via environment variable
+
+   extraction.databases = [ "dev_admin" ]   # This is the root database - under this, we create the demo environment
+   git_branch = "master"
+   writer.target_dir="./teradata-code"
+   tagging_rules = [ "{{env}}%" ]
+
+   [ environments.d-blocks-demo.tagging_variables ]
+   env = "dev"   # Code in Git is typically environment agnostic - it does not contain any specific environment values like database prefixes. Based on tagging_rules, we replace any database prefix "dev" with {{env}}.
+   ```
+4. Follow the instructions in the configuration file and fill in the correct **host name, user name, and database password**.
+
+#### **Test the Configuration and Database Connection**
+Once you've updated the configuration, verify that everything is set up correctly:
+```bash
+debbie cfg-check
+debbie env-test-connection d-blocks-demo
+```
+If these commands run successfully, your environment is ready to use **D-Blocks** for database management.
+
+### **5. Basic Usage**
 
 Initialize a new d-blocks project:
 
