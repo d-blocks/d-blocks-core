@@ -41,16 +41,16 @@ Before installing d-blocks, ensure you have the following:
 - **Python 3.12+** installed ([Download Python](https://www.python.org/downloads/))
 - **Access to a Teradata database** (e.g., local VM, cloud, or on-prem)
 
-### **2\. Installation**
-
-Install d-blocks using pip:
-
+### **2. Installation**
+Install d-blocks-core using pip:
 ```bash
-pip install dblocks
+pip install d-blocks-core
 ```
 
 ### **3. Clone Demo Repository**
-To quickly test the capabilities of d-blocks, we recommend cloning our demo project repository. This repository contains sample database code that can be used for testing.
+To quickly test the capabilities of D-Blocks, we recommend cloning our demo project repository. This repository contains a small data warehouse definition, including:
+- **DDL scripts to initialize the environment**
+- **DDL scripts for database objects** (tables, views, indexes, etc.)
 
 Clone the repository using Git:
 ```bash
