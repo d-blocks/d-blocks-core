@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/d_blocks_logo.png" alt="D-Blocks Logo" width="300" />
+  <img src="docs/images/d_blocks_logo.png" alt="d-blocks Logo" width="300" />
 </p>
 
 # d-blocks: Bringing Teradata Code Under Control
@@ -38,9 +38,8 @@ Below are additional sections covering various aspects of d-blocks:
 
 Before installing d-blocks, ensure you have the following:
 
-- **Python 3.8+** installed ([Download Python](https://www.python.org/downloads/))
-- **Git client** installed ([Download Git](https://git-scm.com/downloads))
-- **Access to a Teradata database** (e.g., local, cloud, or enterprise)
+- **Python 3.12+** installed ([Download Python](https://www.python.org/downloads/))
+- **Access to a Teradata database** (e.g., local VM, cloud, or on-prem)
 
 ### **2\. Installation**
 
@@ -50,7 +49,17 @@ Install d-blocks using pip:
 pip install dblocks
 ```
 
-### **3\. Basic Usage**
+### **3. Clone Demo Repository**
+To quickly test the capabilities of d-blocks, we recommend cloning our demo project repository. This repository contains sample database code that can be used for testing.
+
+Clone the repository using Git:
+```bash
+git clone https://github.com/d-blocks/d-blocks-test.git
+```
+
+Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-test.git), but we encourage users to use Git for better version control and easy updates.
+
+### **4. Basic Usage**
 
 Initialize a new d-blocks project:
 
