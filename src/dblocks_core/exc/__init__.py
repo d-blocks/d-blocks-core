@@ -82,6 +82,9 @@ def catch_our_errors():
     except DBlocksError as err:
         logger.error(err.message)
         sys.exit(1)
+    except KeyboardInterrupt:
+        logger.error("Program was interrupted (Ctrl+C)")
+        sys.exit(1)
 
 
 def _print_exception_tree():
