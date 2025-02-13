@@ -1,0 +1,21 @@
+COLLECT STATISTICS 
+             USING SAMPLE 5.00 PERCENT 
+                   -- default SYSTEM THRESHOLD PERCENT 
+            COLUMN ( a_col )
+                ON a_tab 
+;
+
+COLLECT STATISTICS 
+                   -- default SYSTEM SAMPLE PERCENT 
+                   -- default SYSTEM THRESHOLD PERCENT 
+            COLUMN ( PARTITION ) 
+            COLUMN ( CAST((start_dt ) AS TIMESTAMP(6)))  AS "CAST((start_dt ) _41900072" 
+                ON a_tab
+;
+
+COLLECT STATISTICS 
+             USING SAMPLE 10.00 PERCENT 
+                   -- default SYSTEM THRESHOLD PERCENT 
+            COLUMN ( col )
+                ON a_tab
+;

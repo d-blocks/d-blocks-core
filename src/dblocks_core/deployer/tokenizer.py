@@ -9,9 +9,11 @@ STAR = "*"
 NEW_LINE = "\n"
 LBRACKET = "("
 RBRACKET = ")"
+MINUS = "-"
+QUOTE = '"'
 
 
-def tokenize_statemets(
+def tokenize_statements(
     text: str,
     *,
     separator=SEMICOLON,
@@ -45,6 +47,7 @@ def tokenize_statemets(
 
     # initial state
     in_string, in_comment, skip_next_n = False, False, 0
+    in_identifier, in_single_line_comment = False, False
     bracket_count = 0
     next_char = ""
     line_no = 1
@@ -109,6 +112,27 @@ def tokenize_statemets(
                 raise exc.DParsingError(message)
             in_comment, skip_next_n = False, 1
 
+        # start of single line comment
+        if char == MINUS and next_char == MINUS:
+            in_single_line_comment, skip_next_n = True, 1
+            continue
+
+        # in single line comment
+        if in_single_line_comment:
+            if char == NEW_LINE:
+                in_single_line_comment = False
+            continue
+
+        # in an identifier
+        if char == QUOTE:
+            in_identifier = not in_identifier
+            continue
+        if in_identifier:
+            continue
+
+        # in a bracket ... could be in an identifier, do not count them
+        # example: COLLECT STATS COLUMN ( CAST((start_dt ) AS TIMESTAMP(6)))  AS "CAST((start_dt ) _41900072" , )
+        # this is a valid SQL, however number of brackets is not "symmetrical"
         if char == LBRACKET:
             bracket_count += 1
             continue
