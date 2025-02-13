@@ -22,6 +22,8 @@ AUTHORIZATION = "AUTHORIZATION"
 
 TERADATA = "teradata"
 
+DATABASE_LOG_LEVEL = 15
+
 # typoes of objects debbie can manage
 MANAGED_TYPES = [
     DATABASE,
