@@ -23,7 +23,7 @@ d-blocks is not just a tool--it's a **community-driven initiative** that continu
 
 Below are additional sections covering various aspects of d-blocks:
 
-- [User Guidelines](docs/user_guidelines.md)
+- [User Guidelines](docs/pages/user_guidelines.md)
 - [Technical Documentation](docs/technical_documentation.md)
 - [Methodology: Setting Up Processes in EDW](docs/methodology.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -48,16 +48,16 @@ pip install d-blocks-core
 ```
 
 ### **3. Clone Demo Repository**
-To ensure a smooth testing experience, clone our demo project repository, which contains a small data warehouse definition. This repository contains a small data warehouse definition, including:
+To ensure a smooth testing experience, clone our demo project repository, which contains a small data warehouse definition, including:
 - **DDL scripts to initialize the environment**
 - **DDL scripts for database objects** (tables, views, indexes, etc.)
 
-Clone the repository using Git:
+Clone the repository using Git client:
 ```bash
 git clone https://github.com/d-blocks/d-blocks-demo.git
 ```
 
-Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-demo.git), but we encourage users to use Git for better version control and easy updates.
+Alternatively, you can download the repository as a ZIP file from [GitHub](https://github.com/d-blocks/d-blocks-demo.git), but we encourage users to use Git client for better version control and easy updates.
 
 ### **4. Configure and Test the Utility**
 After cloning the demo repository, configure and test the utility by following these steps:
@@ -65,7 +65,7 @@ After cloning the demo repository, configure and test the utility by following t
 #### **Edit the Configuration File**
 1. Navigate to the directory where you cloned the demo repository:
    ```bash
-   cd d-blocks-test
+   cd d-blocks-demo
    ```
 2. Locate the configuration file **dblocks.toml** in the root directory and edit it.
 3. The configuration file looks like this:
