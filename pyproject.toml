@@ -23,7 +23,7 @@ wasp = 'dblocks_core.script.wasp:main'
 
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.10"
 teradatasql = "^20.0.0.20"
 pyaml = "^24.9.0"
 attrs = "^24.2.0"
