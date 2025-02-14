@@ -1,6 +1,6 @@
 # User Guidelines
 
-Welcome to the **User Guidelines** section for Debbie, the core utility of the D-Blocks framework. This section provides detailed instructions on how to work with Debbie efficiently, ensuring best practices for managing database code under version control.
+Welcome to the **User Guidelines** section for Debbie, the core utility of the d-blocks framework. This section provides detailed instructions on how to work with Debbie efficiently, ensuring best practices for managing database code under version control.
 
 Below are the available sections:
 
