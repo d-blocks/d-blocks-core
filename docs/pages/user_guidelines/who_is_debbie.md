@@ -1,6 +1,6 @@
 # Who is Debbie?
 
-Debbie is the command-line utility that powers **D-Blocks**, enabling seamless synchronization and maintenance of database objects in a Git-based workflow. Debbie acts as an **assistant**, helping both developers and CI/CD pipelines to maintain **database environments** efficiently.
+Debbie is the command-line utility that powers **d-blocks**, enabling seamless synchronization and maintenance of database objects in a Git-based workflow. Debbie acts as an **assistant**, helping both developers and CI/CD pipelines to maintain **database environments** efficiently.
 
 ### **Installation**
 Debbie is included in the `d-blocks-core` package, which can be installed via **pip**.
