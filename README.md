@@ -101,8 +101,8 @@ After cloning the demo repository, configure and test the utility by following t
 #### **Test the Configuration and Database Connection**
 Once you've updated the configuration, verify that everything is set up correctly:
 ```bash
-debbie cfg-check
-debbie env-test-connection d-blocks-demo
+dbee cfg-check
+dbee env-test-connection d-blocks-demo
 ```
 If these commands run successfully, your environment is ready to use **d-blocks** for database management.
 

@@ -19,7 +19,7 @@ Debbie requires a standardized **directory structure** to store and maintain **d
 ### **Initializing a New Debbie Project**
 To create a new project, navigate to an **empty Git repository** and run:
 ```bash
-debbie init
+dbee init
 ```
 If the directory is not already a **Git repository**, Debbie will initialize it for you.
 
