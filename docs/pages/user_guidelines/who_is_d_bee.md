@@ -1,9 +1,9 @@
-# Who is Debbie?
+# Who is d-bee?
 
-Debbie is the command-line utility that powers **d-blocks**, enabling seamless synchronization and maintenance of database objects in a Git-based workflow. Debbie acts as an **assistant**, helping both developers and CI/CD pipelines to maintain **database environments** efficiently.
+d-bee is the command-line utility that powers **d-blocks**, enabling seamless synchronization and maintenance of database objects in a Git-based workflow. d-bee acts as an **assistant**, helping both developers and CI/CD pipelines to maintain **database environments** efficiently.
 
 ### **Installation**
-Debbie is included in the `d-blocks-core` package, which can be installed via **pip**.
+d-bee is included in the `d-blocks-core` package, which can be installed via **pip**.
 
 #### **Prerequisites**
 - Python 3.11+
@@ -23,13 +23,13 @@ Debbie is included in the `d-blocks-core` package, which can be installed via **
      ```bash
      dblocks-env\Scripts\activate
      ```
-3. **Install Debbie via pip**:
+3. **Install d-bee via pip**:
    ```bash
    pip install d-blocks-core
    ```
 
 ### **First Call**
-Once installed, you can check if Debbie is working correctly by running:
+Once installed, you can check if d-bee is working correctly by running:
 ```bash
 debbie --help
 ```
