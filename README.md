@@ -139,4 +139,4 @@ _(More details will be added soon!)_
 --------------------------------------------------------------------------------
 
 📢 **Join the Community!**<br>
-💬 Connect with us on **Slack**, contribute on **GitHub**, and help shape the future of **d-blocks**!
+💬 Connect with us on [**Slack**](https://join.slack.com/t/d-blocks/shared_invite/zt-2yxty9o6u-mwetjzuNS~r114iGWXxLnQ), contribute on **GitHub**, and help shape the future of **d-blocks**!
