@@ -14,8 +14,9 @@ d-bee uses two primary configuration files:
 
 These files are automatically created when running:
 ```bash
-debbie init
+dbee init
 ```
+You can get more information in [d-bee's Project Structure](project_structure.md) section.
 
 ## Defining Environments
 Each environment represents a specific database instance and must be defined explicitly in `dblocks.toml`.
