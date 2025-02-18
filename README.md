@@ -30,7 +30,7 @@ For detail information visit [User Guidelines](docs/pages/user_guidelines.md)
 
 Before installing d-blocks, ensure you have the following:
 
-- **Python 3.12+** installed ([Download Python](https://www.python.org/downloads/))
+- **Python 3.11+** installed ([Download Python](https://www.python.org/downloads/))
 - **Access to a Teradata database** (e.g., local VM, cloud, or on-prem)
 
 ### **2. Installation**
