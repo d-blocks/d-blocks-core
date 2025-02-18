@@ -16,7 +16,7 @@ These files are automatically created when running:
 ```bash
 dbee init
 ```
-You can get more information in [d-bee's Project Structure](project_structure.md) section.
+You can get more information in [Project Structure](project_structure.md) section.
 
 ## Defining Environments
 Each environment represents a specific database instance and must be defined explicitly in `dblocks.toml`.

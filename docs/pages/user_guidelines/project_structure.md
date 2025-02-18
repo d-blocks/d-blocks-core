@@ -1,4 +1,4 @@
-# d-bee's Project Structure
+# Project Structure
 
 d-bee requires a standardized **directory structure** to store and maintain **database object definitions**. This structure is referred to as a **d-bee Project**.
 
