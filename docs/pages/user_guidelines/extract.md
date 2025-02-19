@@ -17,10 +17,9 @@ This feature can track **hotfixes applied in production** over the last few days
 Users can extract database code from one environment and **create a duplicate environment** based on the extracted objects, facilitating the setup of new environments.
 After initializing a **d-bee project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
 
-d-bee supports this step with the **`env-extract`**. One can get complete overview by command:
+From the command line, we can get detailed instructions in the standard way:
 ```bash
 dbee env-extract --help
-```
 
 ## Usage
 The basic syntax for environment extraction:
