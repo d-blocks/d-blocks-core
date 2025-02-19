@@ -38,7 +38,7 @@ def make_init(
 ):
     # prep paths to two basic configuration files
     cwd = Path.cwd()
-    home_config = Path.home()
+    home_config = config.PROFILE_CONFIG_PATH
 
     dblocks_toml = get_default_config()
     secrets_toml = 'environments.dev.password = "__password__"'
@@ -47,7 +47,7 @@ def make_init(
     console = Console()
     console.print("Configuration location", style="bold")
     console.print("Config files can be stored either in:")
-    console.print("a) home directory")
+    console.print(f"a) in a user profile ({str(home_config)})")
     console.print("b) current directory, or")
 
     _location = ""
