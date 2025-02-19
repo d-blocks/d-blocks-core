@@ -341,8 +341,14 @@ def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
     cfg = config.load_config()
     logger.info("OK")
-    config.cfg_to_censored_json(cfg)
-    # console.print_json()
+
+
+@app.command()
+def cfg_print():
+    """Print the config (censore passwords)"""
+    cfg = config.load_config()
+    cfg_json = config.cfg_to_censored_json(cfg)
+    console.print_json(cfg_json)
 
 
 @app.command()

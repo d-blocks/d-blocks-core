@@ -29,6 +29,11 @@ PROFILE_CONFIG_PATH = platformdirs.user_config_path(
     appname=DBLOCKS_NAME,
 )
 
+PROFILE_DATA_PATH = platformdirs.user_data_path(
+    appauthor=DBLOCKS_NAME,
+    appname=DBLOCKS_NAME,
+)
+
 CONFIG_LOCATIONS = [
     pathlib.Path.cwd(),
     PROFILE_CONFIG_PATH,
