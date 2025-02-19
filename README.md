@@ -6,13 +6,14 @@
 
 ## Overview
 
-**d-blocks** is an open-source utility designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
+**d-blocks** is a powerful open-source utility designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
 
 ### Why d-blocks?
 
 🚀 **Gain full control over your Teradata DDLs** by leveraging Git as the single source of truth.<br>
-🔄 **Synchronize** Git branches with Teradata environments (**development, testing, production**).<br>
+🔄 **Synchronize** Git branches with Teradata environments (**DEV, TEST, PROD**).<br>
 📦 **Deploy safely** from Git to database environments with various deployment strategies, including **incremental changes and rollback options**.<br>
+⚖️ **Compare environments and Git versions** to track changes and resolve discrepancies efficiently.<br>
 🤖 **Automate package creation and deployments**, making release management easier.<br>
 🌍 **Leverage best practices and lessons learned** from **global teams** to improve your database development workflows.
 
@@ -20,7 +21,14 @@ d-blocks is not just a tool--it's a **community-driven initiative** that continu
 
 ## Documentation
 
-For detail information visit [User Guidelines](docs/pages/user_guidelines.md)
+Below are additional sections covering various aspects of d-blocks:
+
+- [User Guidelines](docs/pages/user_guidelines.md)
+- [Technical Documentation](docs/technical_documentation.md)
+- [Methodology: Setting Up Processes in EDW](docs/methodology.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Contributing](docs/contributing.md)
+- [Roadmap & Updates](docs/roadmap.md)
 
 --------------------------------------------------------------------------------
 
@@ -30,7 +38,7 @@ For detail information visit [User Guidelines](docs/pages/user_guidelines.md)
 
 Before installing d-blocks, ensure you have the following:
 
-- **Python 3.11+** installed ([Download Python](https://www.python.org/downloads/))
+- **Python 3.12+** installed ([Download Python](https://www.python.org/downloads/))
 - **Access to a Teradata database** (e.g., local VM, cloud, or on-prem)
 
 ### **2. Installation**
@@ -103,22 +111,20 @@ If these commands run successfully, your environment is ready to use **d-blocks*
 Initialize a new d-blocks project:
 
 ```bash
-dbee init
+dblocks init
+```
+
+Synchronize Git with your Teradata environment:
+
+```bash
+dblocks sync --source git --target teradata
 ```
 
 Deploy database changes from Git to your environment:
 
 ```bash
-dbee env-deploy dev
+dblocks deploy --strategy incremental
 ```
-
-Extract code back to Git
-
-
-```bash
-dbee env-extract dev
-```
-
 
 For more details, visit the [User Guidelines](docs/user_guidelines.md).
 
@@ -139,4 +145,4 @@ _(More details will be added soon!)_
 --------------------------------------------------------------------------------
 
 📢 **Join the Community!**<br>
-💬 Connect with us on [**Slack**](https://join.slack.com/t/d-blocks/shared_invite/zt-2yxty9o6u-mwetjzuNS~r114iGWXxLnQ), contribute on **GitHub**, and help shape the future of **d-blocks**!
+💬 Connect with us on **Slack**, contribute on **GitHub**, and help shape the future of **d-blocks**!

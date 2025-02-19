@@ -7,3 +7,8 @@ Below are the available sections:
 - [Who is d-bee?](user_guidelines/who_is_d_bee.md)
 - [Configuration](user_guidelines/configuration.md)
 - [Project Structure](user_guidelines/project_structure.md)
+- [Feature: Project Initialization](user_guidelines/project_init.md)
+- [Feature: Export](user_guidelines/export.md)
+- [Feature: Deploy](user_guidelines/deploy.md)
+- [Feature: Package](user_guidelines/package.md)
+- [Walk Me Through](user_guidelines/walk_me_through.md)
