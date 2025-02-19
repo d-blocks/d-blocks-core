@@ -20,6 +20,7 @@ After initializing a **d-bee project**, the next step is typically to **extract 
 From the command line, we can get detailed instructions in the standard way:
 ```bash
 dbee env-extract --help
+```
 
 ## Usage
 The basic syntax for environment extraction:
