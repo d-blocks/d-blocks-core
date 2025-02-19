@@ -92,6 +92,6 @@ This gives you **10 seconds** before execution starts, allowing last-minute canc
 After extraction:
 - Review the extracted code in Git.
 - Modify configurations if necessary (`dblocks.toml`).
-- Continue with the next steps, such as deploying code using `dbee deploy`.
+- Continue with the next steps, such as deploying code using `dbee env-deploy`.
 
 By following this structured approach, you can **ensure all database objects are correctly versioned and maintained**. 🚀
