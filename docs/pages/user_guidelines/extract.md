@@ -3,7 +3,7 @@
 ## Overview
 After initializing a **d-bee project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
 
-**Use case:**
+## Use cases
 ### **Initializing Master Branch from Production**
 Extracting code from a **production system** to initialize the `master` branch and ensure that the latest production-ready database objects are versioned.
 
