@@ -4,12 +4,18 @@
 After initializing a **d-bee project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
 
 **Use case:**
-- Extracting code from a **production system** to initialize the `master` branch.
-- Exporting database objects from a **configured environment** into Git.
-- **Supporting developers during development**: Developers can modify objects in their dedicated development environments, and then use `env-extract` to capture and commit only the objects they changed. The feature recognizes modifications by a specific user and allows filtering based on a time range (e.g., extract changes from the last day).
-- **Monitoring hotfixes in production**: This feature can track hotfixes applied in the production system over the last few days and enable their controlled propagation into the `master` branch via a `hotfix` branch.
-- **Cloning an existing environment**: Users can extract database code from one environment and create a duplicate environment based on the extracted objects, facilitating the setup of new environments.
-After initializing a **Debbie project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
+### **Initializing Master Branch from Production**
+Extracting code from a **production system** to initialize the `master` branch and ensure that the latest production-ready database objects are versioned.
+
+### **Developer Support During Development**
+Developers working in their **dedicated development environments** can modify objects and then use `env-extract` to capture and commit only the objects they changed. The feature recognizes modifications by a specific user and allows filtering based on a time range (e.g., extract changes from the last day).
+
+### **Monitoring Hotfixes in Production**
+This feature can track **hotfixes applied in production** over the last few days and enable their controlled propagation into the `master` branch via a `hotfix` branch, ensuring that emergency changes are properly synchronized with version control.
+
+### **Cloning an Existing Environment**
+Users can extract database code from one environment and **create a duplicate environment** based on the extracted objects, facilitating the setup of new environments.
+After initializing a **d-bee project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
 
 d-bee supports this step with the **`env-extract`**. One can get complete overview by command:
 ```bash
