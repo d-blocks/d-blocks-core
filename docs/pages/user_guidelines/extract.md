@@ -1,7 +1,7 @@
 # Feature: Environment Extraction
 
 ## Overview
-After initializing a **d-bee project**, the next step is typically to **extract existing database code** and store it in a Git repository. This ensures that all relevant database objects are under version control.
+After initializing a **Debbie project**, the next step is typically to **extract existing database code** and store it in a Git repository. One of the most common scenarios is extracting code from a **production system** to initialize the `master` branch. However, the `env-extract` feature supports various other use cases as well, allowing users to streamline development, track hotfixes, and clone environments efficiently. These use cases are described in detail below.
 
 ## Use cases
 ### **Initializing Master Branch from Production**
