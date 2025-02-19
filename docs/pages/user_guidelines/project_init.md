@@ -43,7 +43,7 @@ Modify them according to project needs by following the [Configuration Guide](co
 ## Next Steps
 After initializing the project:
 - Adjust the configuration for your environments.
-- Use `dbee export` to synchronize existing database objects to Git.
+- Use `dbee env-extract` to synchronize existing database objects to Git (see more detail in section [Feature: Extract Environment](extract.md)).
 - Begin working with d-bee’s features to manage database code efficiently.
 
 ---
