@@ -40,6 +40,7 @@ def init():
 
 @app.command()
 def env_test_connection(environment: str):
+    """Connection test for configured environment."""
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
     ext = dbi.extractor_factory(env)
@@ -397,6 +398,7 @@ def ctx_drop(
 
 @app.command()
 def quickstart():
+    """Quickstart on demo repository (https://github.com/d-blocks/d-blocks-demo/blob/main/README.md)"""
     cmd_quickstart.quickstart()
 
 
