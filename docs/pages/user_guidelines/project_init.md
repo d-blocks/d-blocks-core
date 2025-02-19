@@ -3,16 +3,16 @@
 ## Overview
 Project initialization is the first and most crucial step when deciding to maintain database code in Git. Whether you are working with existing database environments or starting a new implementation, **initializing a project** ensures a structured setup.
 
-Debbie supports this process with a simple command:
+d-bee supports this process with a simple command:
 ```bash
 dbee init
 ```
-This command sets up a **Debbie project** by initializing a Git repository (if not already done) and creating essential configuration files.
+This command sets up a **d-bee project** by initializing a Git repository (if not already done) and creating essential configuration files.
 
 ## Steps for Project Initialization
 
 ### **1. Running `dbee init`**
-To initialize a Debbie project, navigate to the **root folder** where you want to store the Git repository and run:
+To initialize a d-bee project, navigate to the **root folder** where you want to initialize the Git repository and run:
 ```bash
 dbee init
 ```
@@ -28,7 +28,7 @@ After running the command, you will be asked whether the **default configuration
 *Note:* Users can later move the configuration files between locations if needed. More details can be found in [Configuration Guide](configuration.md).
 
 ### **3. Initializing the Git Repository (Optional)**
-If the directory is not already a Git repository, Debbie will prompt you to initialize it. This includes:
+If the directory is not already a Git repository, d-bee will prompt you to initialize it. This includes:
 - Running `git init`
 - Configuring Git settings
 - Creating a `.gitignore` file with recommended default settings
@@ -44,7 +44,7 @@ Modify them according to project needs by following the [Configuration Guide](co
 After initializing the project:
 - Adjust the configuration for your environments.
 - Use `dbee export` to synchronize existing database objects to Git.
-- Begin working with Debbie’s features to manage database code efficiently.
+- Begin working with d-bee’s features to manage database code efficiently.
 
 ---
 By following this structured setup, you ensure **best practices** and **smooth integration** of database code management within Git. 🚀
