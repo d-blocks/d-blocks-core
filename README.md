@@ -38,7 +38,7 @@ Below are additional sections covering various aspects of d-blocks:
 
 Before installing d-blocks, ensure you have the following:
 
-- **Python 3.12+** installed ([Download Python](https://www.python.org/downloads/))
+- **Python 3.11+** installed ([Download Python](https://www.python.org/downloads/))
 - **Access to a Teradata database** (e.g., local VM, cloud, or on-prem)
 
 ### **2. Installation**
@@ -145,4 +145,4 @@ _(More details will be added soon!)_
 --------------------------------------------------------------------------------
 
 📢 **Join the Community!**<br>
-💬 Connect with us on **Slack**, contribute on **GitHub**, and help shape the future of **d-blocks**!
+💬 Connect with us on [**Slack**](https://join.slack.com/t/d-blocks/shared_invite/zt-2yxty9o6u-mwetjzuNS~r114iGWXxLnQ), contribute on **GitHub**, and help shape the future of **d-blocks**!
