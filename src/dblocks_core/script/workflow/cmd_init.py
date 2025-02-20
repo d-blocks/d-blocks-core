@@ -1,5 +1,6 @@
 # flake8: ignore=F401,E501
 
+import os
 from pathlib import Path
 from textwrap import dedent
 
@@ -38,16 +39,19 @@ def make_init(
 ):
     # prep paths to two basic configuration files
     cwd = Path.cwd()
-    home_config = Path.home()
+    home_config = config.PROFILE_CONFIG_PATH
+    context_dir = config.PROFILE_DATA_PATH / "ctx"
+    report_dir = config.PROFILE_DATA_PATH / "report"
+    debug_log_file = config.PROFILE_DATA_PATH / "log"
 
-    dblocks_toml = get_default_config()
+    dblocks_toml = get_default_config(context_dir, report_dir, debug_log_file)
     secrets_toml = 'environments.dev.password = "__password__"'
 
     # create default config, if config files do not exist
     console = Console()
     console.print("Configuration location", style="bold")
     console.print("Config files can be stored either in:")
-    console.print("a) home directory")
+    console.print(f"a) in a user profile ({str(home_config)})")
     console.print("b) current directory, or")
 
     _location = ""
@@ -69,14 +73,18 @@ def make_init(
         secrets_file = cwd / secrets_file_name
 
     if not dblocks_file.is_file():
+        dblocks_file.parent.mkdir(exist_ok=True)
         logger.info(f"write default config to: {dblocks_file.as_posix()}")
         dblocks_file.write_text(dblocks_toml, encoding="utf-8")
+        os.chmod(dblocks_file, 0o600)
     else:
         logger.debug(f"skipping file: {dblocks_file.as_posix()}")
 
     if not secrets_file.is_file():
+        secrets_file.parent.mkdir(exist_ok=True)
         logger.info(f"write secrets to: {dblocks_file.as_posix()}")
         secrets_file.write_text(secrets_toml, encoding="utf-8")
+        os.chmod(secrets_file, 0o600)
     else:
         logger.debug(f"skipping file: {secrets_file.as_posix()}")
 
@@ -118,9 +126,13 @@ def patch_gitignore(in_dir: Path):
         gitignore.write_text("\n".join(lines), encoding="utf-8")
 
 
-def get_default_config() -> str:
+def get_default_config(
+    context_dir: Path,
+    report_dir: Path,
+    debug_log_file: Path,
+) -> str:
     return dedent(
-        """
+        f"""
         # this value is important to keep track of changes of the configuration schema
         # do not change, unless you are migrating to a different version of debbie utility
         config_version = "1.0.0"
@@ -129,11 +141,11 @@ def get_default_config() -> str:
         # this is the directory, where checkpoints are stored in JSON format
         # checkpoints support restartability of long lasting operations
         # the directory should NOT be version controlled
-        ctx_dir = "./context"
+        ctx_dir = "{context_dir.as_posix()}"
 
         # report directory - where reports can be stored
         # the directory should NOT be version controlled
-        report_dir = "./context/report"
+        report_dir = "{report_dir.as_posix()}"
 
 
         [ logging ]
@@ -149,7 +161,7 @@ def get_default_config() -> str:
         # see https://loguru.readthedocs.io/en/stable/api/logger.html#sink for more details
 
         # log also to a file
-        other_sinks.debug_sink.sink = "./log/dblocks.log"
+        other_sinks.debug_sink.sink = "{debug_log_file.as_posix()}"
 
         # log file only contains messages with severity of DEBUG and higher
         # available log levels are: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
@@ -183,7 +195,8 @@ def get_default_config() -> str:
         # password, however, should NEVER be stored in plain text in the repo, so that
         # we do not risk committing the password to the repo
         # it is recommended to set it using environment variable, like so:
-        #
+        #"""
+        """
         # export DBLOCKS_ENVIRONMENTS__{env_name}__PASSWORD=__the_password__
         # for example: given that this environment is named "dev"
         # we would use variable named DBLOCKS_ENVIRONMENTS__EP__PASSWORD
@@ -226,7 +239,8 @@ def get_default_config() -> str:
         # the first rule that matches name of the database is used
         #
         # please note that these rules contain names of variables that are
-        # configured below
+        # configured below"""
+        """
         tagging_rules = [
             "{{env_db}}%",                  # rule used for databases - take note that env_db=P01 (below)
             "{{env_usr}}%",                 # rule used for users - take note that env_db=UP01 (below)

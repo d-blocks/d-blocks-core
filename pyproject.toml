@@ -17,8 +17,12 @@ classifiers = [
 ]
 
 [tool.poetry.scripts]
+# core features
+d-bee = 'dblocks_core.script.debbie:main'
 debbie = 'dblocks_core.script.debbie:main'
-wasp = 'dblocks_core.script.wasp:main'
+
+# experimental features
+d-exp = 'dblocks_core.script.wasp:main'
 
 
 
@@ -33,7 +37,7 @@ cattrs = "^24.1.2"
 typer = "^0.13.1"
 loguru = "^0.7.2"
 rich = "^13.9.4"
-sphinx = "^8.1.3"
+platformdirs = "^4.3.6"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -41,10 +45,6 @@ black = "^24.10.0"
 flake8 = "^7.1.1"
 jupyterlab = "^4.3.1"
 pytest = "^8.3.4"
-sphinx = "^8.1.3"
-sphinx-rtd-theme = "^3.0.2"
-myst-parser = "^4.0.0"
-groundwork-sphinx-theme = "^1.1.1"
 
 [build-system]
 requires = ["poetry-core"]

@@ -13,20 +13,34 @@ from importlib import metadata
 from typing import Any, Callable, Iterable
 
 import cattrs
+import platformdirs
 from cattrs import transform_error
 from loguru import logger
 
 from dblocks_core import exc
 from dblocks_core.model import config_model, meta_model
 
+DBLOCKS_NAME = "d-blocks"
 SECRETS_FILE = ".dblocks-secrets.toml"
 DBLOCKS_FILE = "dblocks.toml"
 
+PROFILE_CONFIG_PATH = platformdirs.user_config_path(
+    appauthor=DBLOCKS_NAME,
+    appname=DBLOCKS_NAME,
+)
+
+PROFILE_DATA_PATH = platformdirs.user_data_path(
+    appauthor=DBLOCKS_NAME,
+    appname=DBLOCKS_NAME,
+)
 
 CONFIG_LOCATIONS = [
     pathlib.Path.cwd(),
-    pathlib.Path.home(),
+    PROFILE_CONFIG_PATH,
+    pathlib.Path.home(),  # fallback, previous versions of the tool
 ]
+
+
 _PARTS_DELIMITER = "__"
 _SECRETS = ["password"]
 REDACTED = "<redacted>"
