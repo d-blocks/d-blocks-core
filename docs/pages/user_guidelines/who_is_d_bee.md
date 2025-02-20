@@ -31,6 +31,6 @@ d-bee is included in the `d-blocks-core` package, which can be installed via **p
 ### **First Call**
 Once installed, you can check if d-bee is working correctly by running:
 ```bash
-dbee --help
+d-bee --help
 ```
 This command provides an overview of available commands and options.

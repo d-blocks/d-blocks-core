@@ -14,7 +14,7 @@ d-bee uses two primary configuration files:
 
 These files are automatically created when running:
 ```bash
-dbee init
+d-bee init
 ```
 You can get more information in [Project Structure](project_structure.md) section.
 
@@ -80,8 +80,8 @@ interactive = true
 ## Testing Your Configuration
 Validate that your configuration is set up correctly:
 ```bash
-dbee cfg-check
-dbee env-test-connection dev
+d-bee cfg-check
+d-bee env-test-connection dev
 ```
 If these commands succeed, your configuration is correctly set up!
 

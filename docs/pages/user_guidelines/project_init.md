@@ -5,16 +5,16 @@ Project initialization is the first and most crucial step when deciding to maint
 
 d-bee supports this process with a simple command:
 ```bash
-dbee init
+d-bee init
 ```
 This command sets up a **d-bee project** by initializing a Git repository (if not already done) and creating essential configuration files.
 
 ## Steps for Project Initialization
 
-### **1. Running `dbee init`**
+### **1. Running `d-bee init`**
 To initialize a d-bee project, navigate to the **root folder** where you want to initialize the Git repository and run:
 ```bash
-dbee init
+d-bee init
 ```
 
 ### **2. Choosing Configuration File Location**
@@ -43,7 +43,7 @@ Modify them according to project needs by following the [Configuration Guide](co
 ## Next Steps
 After initializing the project:
 - Adjust the configuration for your environments.
-- Use `dbee env-extract` to synchronize existing database objects to Git (see more detail in section [Feature: Extract Environment](extract.md)).
+- Use `d-bee env-extract` to synchronize existing database objects to Git (see more detail in section [Feature: Extract Environment](extract.md)).
 - Begin working with d-bee’s features to manage database code efficiently.
 
 ---

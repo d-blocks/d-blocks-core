@@ -19,13 +19,13 @@ After initializing a **d-bee project**, the next step is typically to **extract 
 
 From the command line, we can get detailed instructions in the standard way:
 ```bash
-dbee env-extract --help
+d-bee env-extract --help
 ```
 
 ## Usage
 The basic syntax for environment extraction:
 ```bash
-dbee env-extract [OPTIONS] ENVIRONMENT
+d-bee env-extract [OPTIONS] ENVIRONMENT
 ```
 
 Where:
@@ -33,7 +33,7 @@ Where:
 
 ### Example: Extracting a Production Database
 ```bash
-dbee env-extract production
+d-bee env-extract production
 ```
 
 This extracts all objects from the `production` environment, as configured in `dblocks.toml`, and commits them to Git.
@@ -45,10 +45,10 @@ By default, a **full extraction** is performed, capturing all database objects. 
 Examples:
 ```bash
 # Extract only objects modified in the last day
-dbee env-extract production --since 1d
+d-bee env-extract production --since 1d
 
 # Extract objects changed in the last three months
-dbee env-extract production --since 3m
+d-bee env-extract production --since 3m
 ```
 
 Accepted values for `--since`:
@@ -58,33 +58,33 @@ Accepted values for `--since`:
 ### **2. Skipping Confirmation Prompts**
 To bypass interactive confirmation prompts, use:
 ```bash
-dbee env-extract production --assume-yes
+d-bee env-extract production --assume-yes
 ```
 
 ### **3. Auto-Commit Changes**
 By default, extracted changes are **committed to Git** automatically. To disable this:
 ```bash
-dbee env-extract production --no-commit
+d-bee env-extract production --no-commit
 ```
 
 ### **4. Filtering Specific Objects**
 Use filters to extract specific databases, tables, or objects by their creator:
 ```bash
 # Extract only specific databases
-dbee env-extract production --filter-databases sales%
+d-bee env-extract production --filter-databases sales%
 
 # Extract only specific table names
-dbee env-extract production --filter-names customer%
+d-bee env-extract production --filter-names customer%
 
 # Extract objects created by a specific user
-dbee env-extract production --filter-creator admin%
+d-bee env-extract production --filter-creator admin%
 ```
 - `%` acts as a wildcard, matching multiple characters.
 
 ### **5. Delayed Extraction with Countdown**
 If performing a **full extraction**, d-bee allows setting a countdown before execution:
 ```bash
-dbee env-extract production --countdown-from 10
+d-bee env-extract production --countdown-from 10
 ```
 This gives you **10 seconds** before execution starts, allowing last-minute cancellations.
 
@@ -92,6 +92,6 @@ This gives you **10 seconds** before execution starts, allowing last-minute canc
 After extraction:
 - Review the extracted code in Git.
 - Modify configurations if necessary (`dblocks.toml`).
-- Continue with the next steps, such as deploying code using `dbee env-deploy`.
+- Continue with the next steps, such as deploying code using `d-bee env-deploy`.
 
 By following this structured approach, you can **ensure all database objects are correctly versioned and maintained**. 🚀

@@ -19,7 +19,7 @@ d-bee requires a standardized **directory structure** to store and maintain **da
 ### **Initializing a New d-bee Project**
 To create a new project, navigate to an **empty Git repository** and run:
 ```bash
-dbee init
+d-bee init
 ```
 If the directory is not already a **Git repository**, d-bee will initialize it for you.
 
