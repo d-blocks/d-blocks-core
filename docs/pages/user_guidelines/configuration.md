@@ -1,27 +1,35 @@
 # Configuration Guide for d-bee
 
 ## Overview
+
 Configuration in **d-bee** defines how database environments are managed, synchronized, and maintained. It enables users to:
+
 - Define multiple environments (e.g., **development, testing, production**).
 - Specify how d-bee interacts with Git and database systems.
 - Securely store sensitive credentials.
 - Control extraction, synchronization, and deployment behavior.
 
 ## Configuration Files
+
 d-bee uses two primary configuration files:
+
 - **`dblocks.toml`** (Public settings - version-controlled in Git)
 - **`.dblocks-secrets.toml`** (Sensitive settings - stored securely outside Git)
 
 These files are automatically created when running:
+
 ```bash
 d-bee init
 ```
+
 You can get more information in [Project Structure](project_structure.md) section.
 
 ## Defining Environments
+
 Each environment represents a specific database instance and must be defined explicitly in `dblocks.toml`.
 
 Example configuration:
+
 ```toml
 [ environments.dev ]
 platform = "teradata"
@@ -44,20 +52,27 @@ tagging_rules = [ "{{env_db}}%" ]
 ```
 
 ### Managing Sensitive Information
+
 **Never store passwords in `dblocks.toml`!** Instead, use:
 
 1. **Environment variables (Recommended Approach)**:
-   ```bash
-   export DBLOCKS_ENVIRONMENTS__DEV__PASSWORD=your_secure_password
-   ```
+
+  ```bash
+  export DBLOCKS_ENVIRONMENTS__DEV__PASSWORD=your_secure_password
+  ```
+
 2. **Secrets file (`.dblocks-secrets.toml`)**:
-   ```toml
-   environments.dev.password = "your_secure_password"
-   ```
+
+  ```toml
+  environments.dev.password = "your_secure_password"
+  ```
 
 ## Advanced Configuration Options
+
 ### Logging Settings
+
 d-bee logs activities using the `loguru` library. Customize logging in `dblocks.toml`:
+
 ```toml
 [ logging ]
 console_log_level = "INFO"
@@ -68,7 +83,9 @@ other_sinks.debug_sink.retention = "15 days"
 ```
 
 ### Package Management
+
 d-bee manages **database object deployment packages** via a structured directory:
+
 ```toml
 [ packager ]
 package_dir = "./pkg"
@@ -78,12 +95,16 @@ interactive = true
 ```
 
 ## Testing Your Configuration
+
 Validate that your configuration is set up correctly:
+
 ```bash
 d-bee cfg-check
 d-bee env-test-connection dev
 ```
+
 If these commands succeed, your configuration is correctly set up!
 
----
+--------------------------------------------------------------------------------
+
 This guide ensures you configure d-bee effectively while following security best practices. 🚀
