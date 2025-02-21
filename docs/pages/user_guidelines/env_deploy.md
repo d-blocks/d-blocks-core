@@ -7,16 +7,16 @@ While **environment deployment** is mainly used for development and new environm
 
 ## Use Cases
 
-### Deployment of Objects to Development Environments**
+### **Deployment of Objects to Development Environments**
 Developers can deploy individual or multiple database objects to their development environments. The ability to select a **conflict strategy** ensures that developers **do not have to manually resolve conflicts**, such as existing table structures.
 
-### Synchronizing a Development Environment with a Git Branch**
+### **Synchronizing a Development Environment with a Git Branch**
 Before starting new development work, developers often need to ensure that their environment is up to date with a specific **Git branch**. This feature allows seamless **synchronization** with the chosen branch before beginning new implementations.
 
-### Provisioning a New Environment**
+### **Provisioning a New Environment**
 Organizations often need to provision new **development or testing environments**. The environment deployment feature enables setting up an environment **from scratch**, ensuring that all required objects are deployed properly.
 
-### Environment Cloning (Extraction + Deployment)**
+### **Environment Cloning (Extraction + Deployment)**
 A combination of **environment extraction and deployment** can be used to **clone an environment**. For example, before deploying a **new release package** to a **testing environment**, users may first extract the **latest production version** and deploy it to the **test environment** to align the two.
 
 ## Usage
