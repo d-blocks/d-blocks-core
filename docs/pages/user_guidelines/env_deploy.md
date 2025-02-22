@@ -51,6 +51,14 @@ d-bee env-deploy dev ./database_code --if-exists rename
 # Drop existing objects before deployment
 d-bee env-deploy dev ./database_code --if-exists drop
 ```
+### **Deployment Order Handling**
+Unlike **package deployment**, which follows a strict order, **environment deployment** deploys objects **without a predefined order**. The deployment process works as follows:
+- Objects are sorted **alphabetically** and deployed in that order.
+- If an object fails to deploy, it is moved to the next **deployment round**.
+- The process repeats, attempting to deploy as many objects as possible in each round.
+- If no progress is made in a round (i.e., all remaining objects fail to deploy), the deployment **fails**.
+
+This approach ensures that dependent objects (such as views relying on tables) can still be deployed once their dependencies are in place.
 
 ### **Other Options**
 | Option | Description |
