@@ -21,7 +21,7 @@ As part of **Continuous Integration (CI) processes**, package deployment helps i
 The `pkg-deploy` command is used to deploy a **structured package** to a target environment.
 
 ```bash
-dbee pkg-deploy [OPTIONS] ENVIRONMENT PATH
+d-bee pkg-deploy [OPTIONS] ENVIRONMENT PATH
 ```
 
 Where:
@@ -30,7 +30,7 @@ Where:
 
 ### Example: Deploying an Incremental Package
 ```bash
-dbee pkg-deploy test ./package_v1.2
+d-bee pkg-deploy test ./package_v1.2
 ```
 This deploys the package located at `./package_v1.2` to the `test` environment.
 
@@ -38,7 +38,7 @@ This deploys the package located at `./package_v1.2` to the `test` environment.
 ### **Dry Run Mode**
 Before executing a deployment, users can **simulate** the process to verify potential issues:
 ```bash
-dbee pkg-deploy test ./package_v1.2 --dry-run
+d-bee pkg-deploy test ./package_v1.2 --dry-run
 ```
 This ensures no changes are made to the environment during testing.
 
@@ -46,13 +46,13 @@ This ensures no changes are made to the environment during testing.
 Similar to **environment deployment**, users can define how to handle conflicts when objects already exist in the target environment:
 ```bash
 # Raise an error if the object exists (default)
-dbee pkg-deploy test ./package_v1.2 --if-exists raise
+d-bee pkg-deploy test ./package_v1.2 --if-exists raise
 
 # Rename existing objects before deployment
-dbee pkg-deploy test ./package_v1.2 --if-exists rename
+d-bee pkg-deploy test ./package_v1.2 --if-exists rename
 
 # Drop existing objects before deployment
-dbee pkg-deploy test ./package_v1.2 --if-exists drop
+d-bee pkg-deploy test ./package_v1.2 --if-exists drop
 ```
 
 ### **Other Options**
