@@ -3,6 +3,8 @@
 ## Overview
 The **package deployment** feature is designed for deploying **incremental database changes** to higher environments, such as **testing and production**. Unlike **environment deployment**, which is commonly used for development, **package deployment** ensures a structured, controlled, and resilient way of delivering changes. It is built with **strictness, failure resistance, and recovery options** in mind, making it ideal for production workflows.
 
+One major difference between **environment deployment** and **package deployment** is that **package deployment follows an explicitly defined deployment order**, as determined by the package structure. In contrast, **environment deployment does not enforce a specific order** and instead attempts to deploy objects iteratively, retrying failed deployments in multiple rounds until all dependencies are met.
+
 ## Use Cases
 
 ### **Deploying Incremental Packages to Testing and Production**
@@ -12,7 +14,7 @@ Package deployment primarily supports the **creation and application of incremen
 If there is a need to **quickly align production and testing environments**, users can compare both environments (physically or via Git branches). By using another feature (**Package Creation**, coming soon), a **gap package** can be generated and then deployed to synchronize the two environments efficiently.
 
 ### **Supporting Daily Full Builds in Testing Environments**
-As part of **Continuous Integration (CI) processes**, package deployment helps in **automated integration testing** by:
+As part of **Continuous Integration (CI) processes**, package creation and deployment help in **automated integration testing** by:
 - Comparing the **testing environment** with the **common integration branch**.
 - Generating an **update package** based on detected differences.
 - Deploying the package to maintain a **consistent and updated testing environment** for feature validation.
