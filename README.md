@@ -19,11 +19,14 @@
 
 d-blocks is not just a tool--it's a **community-driven initiative** that continuously evolves to incorporate the best strategies for database source control and release management.
 
+Visit [Detail Use Cases](docs/pages/use_cases.md) section to understand where d-blocks can support your team!
+
 ## Documentation
 
 Below are additional sections covering various aspects of d-blocks:
 
 - [User Guidelines](docs/pages/user_guidelines.md)
+- [Detail Use Cases](docs/pages/use_cases.md)
 - [Road map & Updates](docs/pages/road_map.md)
 
 --------------------------------------------------------------------------------
@@ -136,7 +139,7 @@ d-blocks helps projects solve common database source control and deployment chal
 - **Comparing database states** across environments and branches.
 - **Automating routine database deployment processes** with CI/CD pipelines.
 
-_(More details will be added soon!)_
+Visit [Detail Use Cases](docs/pages/use_cases.md) section to understand more!
 
 --------------------------------------------------------------------------------
 
