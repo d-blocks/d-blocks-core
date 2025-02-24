@@ -11,5 +11,3 @@ Below are the available sections:
 - [Feature: Extraction](user_guidelines/extract.md)
 - [Feature: Environment Deployment](user_guidelines/env_deploy.md)
 - [Feature: Package Deployment](user_guidelines/pkg_deploy.md)
-- [Feature: Package Creation](user_guidelines/package.md)
-- [Walk Me Through](user_guidelines/walk_me_through.md)
