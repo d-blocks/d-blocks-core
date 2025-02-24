@@ -28,7 +28,7 @@ Below are additional sections covering various aspects of d-blocks:
 - [Methodology: Setting Up Processes in EDW](docs/methodology.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Contributing](docs/contributing.md)
-- [Roadmap & Updates](docs/roadmap.md)
+- [Road map & Updates](docs/pages/road_map.md)
 
 --------------------------------------------------------------------------------
 
@@ -111,22 +111,22 @@ If these commands run successfully, your environment is ready to use **d-blocks*
 Initialize a new d-blocks project:
 
 ```bash
-dblocks init
+d-bee init
 ```
 
-Synchronize Git with your Teradata environment:
+Synchronize Git with your development Teradata environment:
 
 ```bash
-dblocks sync --source git --target teradata
+d-bee env-extract dev
 ```
 
 Deploy database changes from Git to your environment:
 
 ```bash
-dblocks deploy --strategy incremental
+d-bee env-deploy --if-extsts drop dev
 ```
 
-For more details, visit the [User Guidelines](docs/user_guidelines.md).
+For more details, visit the [User Guidelines](docs/pages/user_guidelines.md).
 
 --------------------------------------------------------------------------------
 
