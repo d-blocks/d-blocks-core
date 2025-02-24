@@ -343,7 +343,7 @@ def deploy_script_with_conflict_strategy(
     if object_type == meta_model.PROCEDURE:
         statements = [script]
     else:
-        statements = [s for s in tokenizer.tokenize_statemets(script)]
+        statements = [s for s in tokenizer.tokenize_statements(script)]
     statements = [tgr.expand_statement(s) for s in statements]
 
     if dry_run:

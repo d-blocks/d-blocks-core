@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 from dblocks_core import context, dbi, exc, tagger
-from dblocks_core.config.config import logger
+from dblocks_core.config.config import add_logger_sink, logger, remove_logger_sink
 from dblocks_core.dbi import AbstractDBI
 from dblocks_core.deployer import fsequencer, tokenizer
 from dblocks_core.model import config_model, meta_model
@@ -36,8 +36,6 @@ def cmd_pkg_deploy(
             )
             raise exc.DOperationsError(msg)
 
-    # FIXME: create a log file for the batch specifically
-
     # find subdirecory where steps are located
     # use case insensitive search, if switched on in config
     logger.info(f"look for {pkg_cfg.steps_subdir} under {pkg_path}")
@@ -70,7 +68,18 @@ def cmd_pkg_deploy(
     if dry_run:
         logger.warning("DRY RUN: we will simulate the deployment.")
 
+    # get a log directory in the package
+    log_dir = pkg_path / "log"
+    log_dir.mkdir(exist_ok=True)
+
+    log_sink_id: int | None = None
     for step in batch.steps:
+        # add the logger
+        if log_sink_id is not None:
+            remove_logger_sink(log_sink_id)
+        log_file = log_dir / (step.name + ".log")
+        log_sink_id = add_logger_sink(log_file)
+
         stp_chk = step.location.as_posix()
         if ctx.get_checkpoint(stp_chk):
             logger.warning(f"+--  skipping deployment step: {step.location.name}")
@@ -83,9 +92,11 @@ def cmd_pkg_deploy(
             file_chk = stp_chk + "->" + file.file.as_posix()
             if ctx.get_checkpoint(file_chk):
                 logger.warning(f"   +-- skip file: {file.file}")
+                logger.log("TERADATA", f"--+ skip file: {file.file}")
                 continue
 
             logger.info(f"   +-- deploy file: {file.file}")
+            logger.log("TERADATA", f"--+ deploy file: {file.file}")
             # switch default db to file.default_db
 
             if file.default_db is not None and prev_db != file.default_db:
@@ -106,6 +117,10 @@ def cmd_pkg_deploy(
         # force logoff
         ext.dispose()
         ctx.set_checkpoint(stp_chk)
+
+    # close the log for this step
+    if log_sink_id is not None:
+        remove_logger_sink(log_sink_id)
 
     ctx.done()
 
@@ -162,6 +177,8 @@ def deploy_script_with_conflict_strategy(
     object_type = script_file.file_type
     object_database: str | None = script_file.default_db
 
+    logger.log("TERADATA", f"--+ deploy file: {script_file.file}")
+
     # assume that the name of the object is identical to name of the file
     if script_file.file_type in meta_model.MANAGED_TYPES:
         object_name = script_file.file.stem.upper()
@@ -189,7 +206,7 @@ def deploy_script_with_conflict_strategy(
     if object_type == meta_model.PROCEDURE:
         statements = [script]
     else:
-        statements = [s for s in tokenizer.tokenize_statemets(script)]
+        statements = [s for s in tokenizer.tokenize_statements(script)]
 
     # FIXME: this only allows for checkpoint with granularity per file, do we want to prep checkpoints per statement ???
     statements = [tgr.expand_statement(s) for s in statements]

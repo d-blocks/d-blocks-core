@@ -15,6 +15,23 @@ from dblocks_core.config.config import logger
 from dblocks_core.dbi import contract
 from dblocks_core.model import meta_model
 
+# custom log level for DB interaction
+# TRACE: 5
+# DEBUG: 10
+# INFO: 20
+# SUCCESS: 25
+# WARNING: 30
+# ERROR: 40
+# CRITICAL: 501
+# we use 15 so that we do not send all to stdout (meta_model.DATABASE_LOG_LEVEL)
+LOG_LEVEL_NAME = "TERADATA"
+LOG_LEVEL = logger.level(
+    LOG_LEVEL_NAME,
+    no=meta_model.DATABASE_LOG_LEVEL,
+    color="<blue>",
+    icon="🛢️",
+)
+
 _LOG_SEPARATOR = "\n" + "-" * 80 + "\n"
 
 # this is used to decide if object details are in dbc.tablesV
@@ -94,7 +111,7 @@ def ignore_errors(err_list: str | list[str | int]):
         err_code = get_error_code_from_exception(cause)
         if err_code in err_list:
             err_desc = get_description_from_exception(cause)
-            logger.warning(f"ignoring error: {err_code}: {err_desc}")
+            logger.debug(f"ignoring error: {err_code}: {err_desc}")
             return
         raise
 
@@ -155,6 +172,10 @@ def translate_error():
         if err_code == ERR_CODE_USER_PASSWORD_INVALID:
             logger.debug(cause)
             raise exc.DBCannotConnect(err_desc) from err
+
+        if err_code == ERR_CODE_NO_STATS_DEFINED:
+            logger.debug(cause)
+            raise exc.DBNoStatsDefined(err_desc) from err
 
         # OperationalError with no error code -> exc.DBCannotConnect
         for dsc in (
@@ -250,8 +271,9 @@ class TeraDBI(contract.AbstractDBI):
                 # skip sqlalchemy compilation step, send the query directly
                 # thus, sqlalchemy wont't try to compile named parameters
                 # (therefore compilation of stored procedures should work)
-                logger.debug(_LOG_SEPARATOR + sql + _LOG_SEPARATOR)
+                logger.log(LOG_LEVEL_NAME, _LOG_SEPARATOR + sql + _LOG_SEPARATOR)
                 con.exec_driver_sql(sql)
+                # FIXME: log size of the result set
 
     @translate_error()
     def get_described_object(
@@ -321,7 +343,7 @@ class TeraDBI(contract.AbstractDBI):
         sql = f"""delete database "{database_name}";"""
         stmt = sa.text(sql)
         with self.engine.connect() as con:
-            logger.debug(stmt)
+            logger.log(LOG_LEVEL_NAME, stmt)
             con.execute(stmt)
 
     @translate_error()
@@ -341,7 +363,7 @@ class TeraDBI(contract.AbstractDBI):
         try:
             with translate_error():
                 with self.engine.connect() as con:
-                    logger.debug(sql)
+                    logger.log(LOG_LEVEL_NAME, sql)
                     con.exec_driver_sql(sql)
         except exc.DBStatementError as err:
             if not ignore_errors:
@@ -361,7 +383,7 @@ class TeraDBI(contract.AbstractDBI):
         try:
             with translate_error():
                 with self.engine.connect() as con:
-                    logger.debug(stmt)
+                    logger.log(LOG_LEVEL_NAME, stmt)
                     con.execute(stmt)
         except exc.DBStatementError as err:
             if not ignore_errors:
@@ -597,12 +619,25 @@ class TeraDBI(contract.AbstractDBI):
         sql = f"""show stats on "{database_name}"."{object_identification}";"""
         stmt = sa.text(sql)
 
-        with ignore_errors([ERR_CODE_NO_STATS_DEFINED, ERR_CODE_NO_ACCESS]):
-            all_stats = ""
-            logger.debug(stmt)
-            with self.engine.connect() as con:
-                rows = [r[0].replace("\r", "\n") for r in con.execute(stmt).fetchall()]
-                all_stats = "".join(rows)
+        try:
+            with translate_error():
+                all_stats = ""
+                logger.debug(stmt)
+                with self.engine.connect() as con:
+                    rows = [
+                        r[0].replace("\r", "\n") for r in con.execute(stmt).fetchall()
+                    ]
+                    all_stats = "".join(rows)
+
+        # pass no stats silently
+        except exc.DBNoStatsDefined as err:
+            return []
+
+        # log no access rights but do not crash
+        except exc.DBAccessRightsError as err:
+            msg = f"{database_name}.{object_identification}: {err.message}"
+            logger.error(msg)
+            return []
 
         stats = [
             meta_model.TableStatistic(ddl_statement=f"{s}\n;")
@@ -691,13 +726,14 @@ class TeraDBI(contract.AbstractDBI):
         logger.info("dispose of the sql engine")
         self.engine.dispose()
 
+    @translate_error()
     def change_database(self, database_name):
         if not database_name:
             logger.warning(f"can not change database: {database_name=}")
             return
         with self.engine.connect() as con:
             stmt = f"database {database_name};"
-            logger.debug(_LOG_SEPARATOR + stmt + _LOG_SEPARATOR)
+            logger.log(LOG_LEVEL_NAME, _LOG_SEPARATOR + stmt + _LOG_SEPARATOR)
             con.exec_driver_sql(stmt)
 
 

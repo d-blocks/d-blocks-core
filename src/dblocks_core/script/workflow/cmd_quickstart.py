@@ -59,7 +59,7 @@ def quickstart():
 
     # řeknu že success
     content = env_file.read_text(encoding="utf-8")
-    statements = tokenizer.tokenize_statemets(content)
+    statements = tokenizer.tokenize_statements(content)
 
     for s in statements:
         s = tgr.expand_statement(s)

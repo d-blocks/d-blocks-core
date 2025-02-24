@@ -65,6 +65,11 @@ class DBObjectDoesNotExist(DBError):
     pass
 
 
+class DBNoStatsDefined(DBError):
+    "No statistics defined for the object."
+    pass
+
+
 class DParsingError(DBlocksError):
     "Can not parse or tokenize the input."
     pass
@@ -76,6 +81,9 @@ def catch_our_errors():
         yield
     except DBlocksError as err:
         logger.error(err.message)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.error("Program was interrupted (Ctrl+C)")
         sys.exit(1)
 
 
