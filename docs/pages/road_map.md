@@ -14,7 +14,7 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 ### **Support for BTEQ Directives in Packages** - *Version 1.0.0*
 - **BTEQ**, a scripting language for **Teradata**, is widely used in **ELT jobs** and **deployment packages**.
 - This feature will integrate **best practices from senior DBAs**, ensuring stable and controlled deployments.
-- **D-Bee will enable combining modern Python workflows with the structured stability of BTEQ scripts.**
+- **d-bee will enable combining modern Python workflows with the structured stability of BTEQ scripts.**
 
 ---
 
@@ -59,14 +59,14 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 
 ---
 
-### **DBT Support**
-**DBT (Data Build Tool)** is a widely used framework for **data transformations**. Many teams need a way to **combine database structure modifications with DBT models**.
+### **dbt Support**
+**dbt (Data Build Tool)** is a widely used framework for **data transformations**. Many teams need a way to **combine database structure modifications with dbt models**.
 
-#### **Planned DBT Features:**
+#### **Planned dbt Features:**
 - **Validation of all sources** (ensure they exist).
-- **Validate DBT models against DDLs**, ensuring alignment between **DBT logic** and **Teradata structures**.
-- **Auto-generate a DBT model** to populate a target table from a source table.
-- **Automate DBT test definitions** using PDM (e.g., uniqueness checks based on PKs, referential integrity validation).
+- **Validate dbt models against DDLs**, ensuring alignment between **dbt logic** and **Teradata structures**.
+- **Auto-generate a dbt model** to populate a target table from a source table.
+- **Automate dbt test definitions** using PDM (e.g., uniqueness checks based on PKs, referential integrity validation).
 
 ---
 
@@ -84,7 +84,7 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 ---
 
 ### **VS Code Support** *(Long-Term Plan)*
-- **D-Bee Integration** with **Visual Studio Code**, similar to other data tools like **DBT**.
+- **d-bee Integration** with **Visual Studio Code**, similar to other data tools like **dbt**.
 - **Support for Data Modeler Roles**:
   - **Visualizing database objects** and their relationships.
   - **Automating large model maintenance** using Python.
