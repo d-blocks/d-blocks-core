@@ -221,7 +221,7 @@ def get_default_config(
         
 
         # configuration of the writer for this environment
-        writer.target_dir = "./db"
+        writer.target_dir = "./meta/teradata"
 
         # configuration of scope of extraction for this environment
         # please note: you can use root containers here; all databases
@@ -282,7 +282,7 @@ def get_default_config(
         package_dir = "./pkg"
 
         # every package will store deployment steps under this subdir
-        steps_subdir = "db/Teradata"
+        steps_subdir = "db/teradata"
 
         # in case where we attempt to overwrite existing package, we assume
         # that it is safe to delete package directory, if it contains less then N files

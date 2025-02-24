@@ -205,7 +205,12 @@ def env_deploy(
             "The environment must be configured in dblocks.toml."
         ),
     ],
-    path: Annotated[str, typer.Argument(help="Path to the package.")],
+    path: Annotated[
+        str,
+        typer.Argument(
+            help="Points to the directory under ./meta, defines scope of the deployment."
+        ),
+    ],
     assume_yes: Annotated[
         bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
     ] = False,
@@ -227,7 +232,8 @@ def env_deploy(
     log_each: Annotated[int, typer.Option(help="Log every n-th object")] = 20,
 ):
     """
-    Package deployment
+    Deploy all objects from a directory to the environment, regardless of dependencies.
+    Potentially destructive action. Not to be confused with pkg-deploy.
     """
     # prepare config
     cfg = config.load_config()
@@ -301,7 +307,7 @@ def pkg_deploy(
     ] = "raise",
 ):
     """
-    Package deployment
+    Package deployment to the specified environment.
     """
     # prepare config
     cfg = config.load_config()

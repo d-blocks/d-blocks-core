@@ -18,13 +18,13 @@ classifiers = [
 
 [tool.poetry.scripts]
 # core features
-d-bee = 'dblocks_core.script.debbie:main'
-debbie = 'dblocks_core.script.debbie:main'
+dbe = 'dblocks_core.script.dbe:main'
+dbee = 'dblocks_core.script.dbe:main'
+d-bee = 'dblocks_core.script.dbe:main'
+debbie = 'dblocks_core.script.dbe:main'
 
 # experimental features
-d-exp = 'dblocks_core.script.wasp:main'
-
-
+dbexp = 'dblocks_core.script.dbexp:main'
 
 [tool.poetry.dependencies]
 python = ">=3.10"
