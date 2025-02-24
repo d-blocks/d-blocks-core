@@ -6,7 +6,7 @@
 
 ## Overview
 
-**d-blocks** is a open-source utility designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
+**d-blocks** is a open-source framework designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
 
 ### Why d-blocks?
 
