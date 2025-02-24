@@ -6,7 +6,7 @@
 
 ## Overview
 
-**d-blocks** is a powerful open-source utility designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
+**d-blocks** is a open-source utility designed to bring **Teradata database code** under **Git-based version control** while seamlessly integrating with modern **CI/CD processes**. With d-blocks, organizations of all sizes--**from large enterprises to smaller teams**--can standardize and automate their daily database code workflows.
 
 ### Why d-blocks?
 
@@ -24,10 +24,6 @@ d-blocks is not just a tool--it's a **community-driven initiative** that continu
 Below are additional sections covering various aspects of d-blocks:
 
 - [User Guidelines](docs/pages/user_guidelines.md)
-- [Technical Documentation](docs/technical_documentation.md)
-- [Methodology: Setting Up Processes in EDW](docs/methodology.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Contributing](docs/contributing.md)
 - [Road map & Updates](docs/pages/road_map.md)
 
 --------------------------------------------------------------------------------
@@ -101,29 +97,29 @@ After cloning the demo repository, configure and test the utility by following t
 #### **Test the Configuration and Database Connection**
 Once you've updated the configuration, verify that everything is set up correctly:
 ```bash
-dbee cfg-check
-dbee env-test-connection d-blocks-demo
+d-bee cfg-check
+d-bee env-test-connection d-blocks-demo
 ```
 If these commands run successfully, your environment is ready to use **d-blocks** for database management.
 
 ### **5. Basic Usage**
 
-Initialize a new d-blocks project:
+The demo project contains script (env-init/demo_env_init.sql) that will create database structures in demo environment under demo_user database. Once staying in root folder of demo project run the follwoing initilization:
 
 ```bash
-d-bee init
+d-bee quickstart
+```
+
+Deploy database structures from Git to your environment:
+
+```bash
+d-bee env-deploy --if-extsts drop dev
 ```
 
 Synchronize Git with your development Teradata environment:
 
 ```bash
 d-bee env-extract dev
-```
-
-Deploy database changes from Git to your environment:
-
-```bash
-d-bee env-deploy --if-extsts drop dev
 ```
 
 For more details, visit the [User Guidelines](docs/pages/user_guidelines.md).
@@ -135,7 +131,7 @@ For more details, visit the [User Guidelines](docs/pages/user_guidelines.md).
 d-blocks helps projects solve common database source control and deployment challenges, including:
 
 - **Version-controlling Teradata code** and integrating it into existing Git workflows.
-- **Managing multiple environments (DEV, TEST, PROD)** and ensuring consistency.
+- **Managing multiple environments (development, testing, production)** and ensuring consistency.
 - **Deploying incremental changes** while minimizing risks.
 - **Comparing database states** across environments and branches.
 - **Automating routine database deployment processes** with CI/CD pipelines.
