@@ -1,6 +1,6 @@
 # Supported Use Cases
 
-🚀 *Note: Several features required for the following use cases are still in progress and will be added soon as per the Road Map.*
+🚀 *Note: Several features required for the following use cases are still in progress and will be added soon as per the [Road Map](road_map.md).*
 
 d-bee provides powerful database management and deployment capabilities tailored for various scenarios. Below is a collection of **use cases** demonstrating how d-bee supports development, deployment, and maintenance of database environments efficiently.
 
