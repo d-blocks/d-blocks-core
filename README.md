@@ -11,7 +11,7 @@
 ### Why d-blocks?
 
 🚀 **Gain full control over your Teradata DDLs** by leveraging Git as the single source of truth.<br>
-🔄 **Synchronize** Git branches with Teradata environments (**DEV, TEST, PROD**).<br>
+🔄 **Synchronize** Git branches with Teradata environments (**development, testing, production**).<br>
 📦 **Deploy safely** from Git to database environments with various deployment strategies, including **incremental changes and rollback options**.<br>
 ⚖️ **Compare environments and Git versions** to track changes and resolve discrepancies efficiently.<br>
 🤖 **Automate package creation and deployments**, making release management easier.<br>
