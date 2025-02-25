@@ -196,6 +196,7 @@ def env_extract(
     ctx.done()
 
 
+# FIXME: by default, if the directory is not given by the user, ask him if he wants to deploy everything
 @app.command()
 def env_deploy(
     environment: Annotated[

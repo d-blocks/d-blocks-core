@@ -42,7 +42,7 @@ connection_parameters.logmech = "TD2"
 connection_parameters.tmode = "TERA"
 
 # Code storage
-writer.target_dir = "./db"
+writer.target_dir = "./meta/teradata"
 
 # Define databases within the environment
 extraction.databases = [ "database_1", "database_2" ]
