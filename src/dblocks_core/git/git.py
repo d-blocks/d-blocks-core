@@ -588,7 +588,7 @@ class Repo:
         - Ensures the Git executable is available; raises an error if it is not.
         - Changes the current working directory to the repository's root before
           executing the command.
-        - Runs the Git command using `subprocess.run` and captures its standard output
+        - Runs the Git command using `subprocess.Popen` and captures its standard output
           and error streams.
         - Decodes the output and error messages using UTF-8 with `surrogateescape` to
           handle special characters.
@@ -601,23 +601,23 @@ class Repo:
             raise exc.DGitNotFound("git not found")
 
         with cwd(self.repo_dir):
-            with TemporaryFile() as stdout, TemporaryFile() as stderr:
-                # prep the run
-                args_ = [self.git_exec, *args]
-                logger.debug(f"running git with args: {args}")
-                state = subprocess.run(args_, stdout=stdout, stderr=stderr)
+            # prep the run
+            args_ = [self.git_exec, *args]
+            logger.debug(f"running git with args: {args}")
+            state = subprocess.Popen(
+                args_, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
 
-                # read the state
-                stdout.seek(0)
-                stderr.seek(0)
-                out = stdout.read().decode("utf-8", errors="surrogateescape")
-                err = stderr.read().decode("utf-8", errors="surrogateescape")
-                return_code = state.returncode
+            # execute and read the state
+            stdout, stderr = state.communicate()
+            out = stdout.decode("utf-8", errors="surrogateescape")
+            err = stderr.decode("utf-8", errors="surrogateescape")
+            return_code = state.returncode
 
-                # log the results
-                logger.debug(f"return_code: {return_code}")
-                logger.debug(f"{len(out)} characters on stdout: {repr(out[:40])}")
-                logger.debug(f"{len(err)} characters on stderr: {repr(err[:40])}")
+            # log the results
+            logger.debug(f"return_code: {return_code}")
+            logger.debug(f"{len(out)} characters on stdout: {repr(out[:40])}")
+            logger.debug(f"{len(err)} characters on stderr: {repr(err[:40])}")
             if return_code != 0 and self.raise_on_error:
                 msg = (
                     f"git command failed: {args}"
