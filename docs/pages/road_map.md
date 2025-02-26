@@ -6,7 +6,7 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 
 ## Following Releases and New Features
 
-### **Create Incremental Package Based on Git History** - *Version 0.9.1*
+### **Create Incremental Package Based on Git History** - *Version 0.9.5*
 - Enables comparison between the **current branch state** and its **initial state**.
 - Supports comparison of **two different branches** (e.g., `release` vs `master`) to create an **incremental package** for production deployment.
 - The **fundamental base** of this feature will be delivered in this version, with enhancements like **auto-deployment order derivation** and **data transfer logic** coming soon.
@@ -15,6 +15,7 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 - **BTEQ**, a scripting language for **Teradata**, is widely used in **ELT jobs** and **deployment packages**.
 - This feature will integrate **best practices from senior DBAs**, ensuring stable and controlled deployments.
 - **d-bee will enable combining modern Python workflows with the structured stability of BTEQ scripts.**
+- Support of commonly selected BTEQ directives (we do not plan to reimplement BTEQ), such as conditionals with ACTIVITYCOUNT, support of labels, etc.
 
 ---
 
