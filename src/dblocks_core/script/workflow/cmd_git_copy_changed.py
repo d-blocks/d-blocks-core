@@ -32,7 +32,7 @@ def copy_changed_files(
             err = f"directory not found: {absolute_source_path.as_posix()}"
             raise exc.DGitError(err)
 
-    changes = repo.changed_files(commit=commit)
+    changes = repo.changes_on_commit(commit=commit)
     if len(changes) == 0:
         logger.error("no changes found")
         return

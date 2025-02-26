@@ -20,6 +20,7 @@ COMMIT = "commit"
 LOG = "log"
 STATUS = "status"
 DIFF_TREE = "diff-tree"
+DIFF = "diff"
 
 _SW_AMEND = "--amend"
 _SW_PORCELAIN = "--porcelain"
@@ -257,7 +258,101 @@ class Repo:
 
         return self.run_git_cmd(INIT)
 
-    def changed_files(self, *, commit: str | None = None) -> list[GitChangedPath]:
+    def changes_between_commits(
+        self,
+        *,
+        base_commit: str,
+        second_commit: str,
+    ) -> list[GitChangedPath]:
+        """
+        This method compares two commits and returns a list of changed files between them.
+        Behavior:
+
+            - Runs git diff --name-status <base_commit> <second_commit> to get the file changes.
+            - Parses each output line, which consists of:
+                - A single-character status code (M, A, D, etc.).
+                - A tab (\t).
+                - The file path.
+            - Uses _status_on_index(status_) to map Git’s status code to FileStatus.
+            - Converts the file path into Path objects (relative and absolute).
+            - Returns a list of GitChangedPath objects with:
+                - change: The type of modification.
+                - rel_path: The file path relative to the repo.
+                - abs_path: The absolute file path.
+
+        Error Handling:
+            Raises exc.DGitError if a line does not match the expected format.
+            Raises exc.DGitError if an unknown status code is encountered.
+
+        This ensures that the method correctly reports file changes between two commits.
+
+        Args:
+            base_commit (str): the case commit - this is the commit we compare to (first commit)
+            second_commit (str): second commit, which is the end of the change tree
+
+        Raises:
+            exc.DGitError: in case there was problem with parsing git output
+
+        Returns:
+            list[GitChangedPath]: list of changes
+        """
+        result = self.run_git_cmd(DIFF, _SW_NAME_STATUS, base_commit, second_commit)
+        output_lines = result.out.splitlines()
+        changes = []
+        for line in output_lines:
+            # git diff --name-status uses tab as delimiter (second character)
+            # the tab is always the second character
+            # FIXME: we have very simillar code in chages_on_commit, this should be refactored
+            parts = line.split("\t")
+            if len(parts) != 2:
+                raise exc.DGitError(
+                    f"problem with parsing the line, please raise an issue: {repr(line)}"
+                )
+            status_, file_ = parts
+            action = _status_on_index(status_)
+            if action == FileStatus.UNKNOWN:
+                err = f"unknown modification: {repr(line)}"
+                raise exc.DGitError(err)
+            rel_path = Path(file_)
+            abs_path = self.repo_dir / rel_path
+            changes.append(
+                GitChangedPath(
+                    change=action,
+                    rel_path=rel_path,
+                    abs_path=abs_path,
+                )
+            )
+        return changes
+
+    def changes_on_commit(self, *, commit: str | None = None) -> list[GitChangedPath]:
+        """
+        This method retrieves the list of changed files in the repository,
+        either for the working directory (unstaged changes) or for a specific commit.
+
+        Args:
+            commit: sha of the commit (or tag)
+
+        Behavior:
+            - If no commit is provided, it runs git status --porcelain
+                to get the current working directory's changes.
+            - If a commit is specified, it runs git diff-tree --no-commit-id -r --name-status <commit> to get the changes in that commit.
+            - The output is parsed:
+                - For git diff-tree, tabs are used as delimiters, so it adjusts the format.
+                - The first two characters indicate the file change status.
+                - The rest of the line contains the file path.
+            - It converts the relative file paths into absolute ones using self.repo_dir.
+            - Each changed file is stored as a GitChangedPath object with:
+                - change: The type of change (Modified, Added, Deleted, etc.).
+                - rel_path: The relative path of the file in the repo.
+                - abs_path: The absolute file path.
+
+        Raises:
+            exc.DGitError if an unknown modification status is encountered.
+
+        Returns:
+            list[GitChangedPath]: list of changes
+        """
+
         if commit is None:
             result = self.run_git_cmd(STATUS, _SW_PORCELAIN)
         else:
@@ -275,7 +370,6 @@ class Repo:
             # the tab is always the second character
             if commit is not None:
                 line = line[0] + " " + line[1:]
-            logger.info(repr(line))
             action = _status_on_index(line[:2])
             if action == FileStatus.UNKNOWN:
                 err = f"unknown modification: {repr(line)}"
