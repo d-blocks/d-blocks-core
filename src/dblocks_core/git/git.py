@@ -114,6 +114,10 @@ class GitChangedPath:
     change: FileStatus
     rel_path: Path
     abs_path: Path
+    # renames only
+    rename_from_rel_path: Path | None
+    rename_from_abs_path: Path | None
+    rename_simillarity: int | None
 
 
 def find_git_exec() -> str | None:
@@ -263,6 +267,7 @@ class Repo:
         *,
         base_commit: str,
         second_commit: str,
+        rename_pct_simillarity: int = 100,
     ) -> list[GitChangedPath]:
         """
         This method compares two commits and returns a list of changed files between them.
@@ -296,34 +301,82 @@ class Repo:
         Returns:
             list[GitChangedPath]: list of changes
         """
-        result = self.run_git_cmd(DIFF, _SW_NAME_STATUS, base_commit, second_commit)
+        result = self.run_git_cmd(
+            DIFF,
+            _SW_NAME_STATUS,
+            f"-M{rename_pct_simillarity}%",
+            base_commit,
+            second_commit,
+        )
         output_lines = result.out.splitlines()
         changes = []
         for line in output_lines:
             # git diff --name-status uses tab as delimiter (second character)
-            # the tab is always the second character
-            # FIXME: we have very simillar code in chages_on_commit, this should be refactored
+            # status is the first part, see the docs - --diff-filter=[(A|C|D|M|R|T|U|X|B)...[*]]
+            # https://git-scm.com/docs/diff-options
+            # for renames (R) we have a simillarity in percent after the status
+            # --find-renames[=<n>] / -M<n>
+            #       For example, -M90% means Git should consider a delete/add pair to be a rename
+            #       if more than 90% of the file hasn’t changed.
+            #       The default similarity index is 50%.
+            #       To limit detection to exact renames, use -M100%
+            # FIXME: we have very simillar code in changes_on_commit, this should be refactored
+            # FIXME: changes_on_commit contains bug (renames)
+
+            simillarity: int | None = None
+            rename_from_rel_path: Path | None = None
+            rename_from_abs_path: Path | None = None
+
             parts = line.split("\t")
+            status_, file_, *rest = parts
+
+            # sanity check
             if len(parts) != 2:
-                raise exc.DGitError(
-                    f"problem with parsing the line, please raise an issue: {repr(line)}"
-                )
-            status_, file_ = parts
+                if len(parts) > 3:
+                    raise exc.DGitError(
+                        f"unexpected tab in line, please raise an issue: {repr(line)=}"
+                    )
+                if status_[0] != "R":
+                    raise exc.DGitError(
+                        f"expected rename, got something else, please raise an issue: {repr(line)=}"
+                    )
+
+                # we know that the action is labeled as rename
+                # status now contains string in form of Rxxx, where xxx is an int (simillarity)
+                try:
+                    simillarity = int(status_[1:])
+                    rename_from_rel_path = Path(file_)
+                    rename_from_abs_path = self.repo_dir / file_
+                    rel_path = Path(rest[0])
+                    abs_path = self.repo_dir / rest[0]
+                    status_ = status_[0]
+                except Exception as err:
+                    raise exc.DGitError(
+                        f"failed to get rename details, please raise an issue: {repr(line)=}\nerror: {err}"
+                    )
+            else:
+                rel_path = Path(file_)
+                abs_path = self.repo_dir / rel_path
+
             action = _status_on_index(status_)
+
             if action == FileStatus.UNKNOWN:
                 err = f"unknown modification: {repr(line)}"
                 raise exc.DGitError(err)
-            rel_path = Path(file_)
-            abs_path = self.repo_dir / rel_path
+
             changes.append(
                 GitChangedPath(
                     change=action,
                     rel_path=rel_path,
                     abs_path=abs_path,
+                    rename_simillarity=simillarity,
+                    rename_from_abs_path=rename_from_abs_path,
+                    rename_from_rel_path=rename_from_rel_path,
                 )
             )
         return changes
 
+    # FIXME: this needs refactoring, and it does not handle renames correctly!
     def changes_on_commit(self, *, commit: str | None = None) -> list[GitChangedPath]:
         """
         This method retrieves the list of changed files in the repository,
