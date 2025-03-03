@@ -64,6 +64,23 @@ def changes_against(
     *,
     subdir_list: list[Path, str] | None,
 ) -> list[git.GitChangedPath]:
+    """Compares last committed state of the current branch to either
+    a different branch, or to a commit on the same branch.
+
+    Args:
+        repo (git.Repo): The repository to analyze.
+        diff_against (str): Compare against "commit" or "branch".
+        diff_ident (str): The commit SHA or branch name.
+        subdir_list (list[Path, str] | None): Filter changes to these
+            subdirectories. Defaults to None.
+
+    Raises:
+        DOperationsError: If `diff_against` is not "commit" or "branch".
+
+    Returns:
+        list[git.GitChangedPath]: List of changed files.
+    """
+
     # what do we diff against, what changes do we have?
     if diff_against == "commit":
         changes = changes_against_commit(repo, baseline_commit=diff_ident)
@@ -75,11 +92,11 @@ def changes_against(
         )
     if subdir_list:
         subdir_list_ = [repo.repo_dir / s for s in subdir_list]
-        changes = filter_subdir(changes, subdir_list_)
+        changes = _filter_subdir(changes, subdir_list_)
     return changes
 
 
-def filter_subdir(
+def _filter_subdir(
     changes: list[git.GitChangedPath],
     subdir_list: list[Path],
 ) -> list[git.GitChangedPath]:
@@ -98,6 +115,19 @@ def changes_against_commit(
     *,
     baseline_commit: str,
 ) -> list[git.GitChangedPath]:
+    """Compares last commit on current branch to a different commit
+    on the same branch, and returns list of changed files.
+
+    Args:
+        baseline_commit (str ): The commit we compare to.
+
+    Raises:
+        DGitCommandError: If the last commit SHA cannot be retrieved.
+
+    Returns:
+        list[git.GitChangedPath]: list of changes
+    """
+
     # check that the commit is on current branch
     feature_branch = repo.get_current_branch()
     branches_with_commit = repo.get_branches_with_commit(baseline_commit)
@@ -124,6 +154,20 @@ def changes_against_branch(
     *,
     baseline_branch: str,
 ) -> list[git.GitChangedPath]:
+    """Compares last commit on current branch to a last common
+    commit with a different branch. Returns list of changed files.
+
+    Typical use case: compare feature branch against a develop branch.
+
+    Args:
+        baseline_branch (str): The branch we compare to.
+
+    Raises:
+        DGitCommandError: If the last commit SHA cannot be retrieved.
+
+    Returns:
+        list[git.GitChangedPath]: list of changes
+    """
 
     # what branch are we on
     feature_branch = repo.get_current_branch()

@@ -121,6 +121,19 @@ class GitChangedPath:
 
 
 def find_git_exec() -> str | None:
+    """Locate the Git executable in the system path.
+
+    Args:
+        None
+
+    Raises:
+        None
+
+    Returns:
+        str | None: The path to the Git executable if found,
+            otherwise None.
+    """
+
     gt = shutil.which(GIT)
     if gt is not None:
         return str(gt)
@@ -263,6 +276,18 @@ class Repo:
         return self.run_git_cmd(INIT)
 
     def get_current_branch(self) -> str:
+        """Retrieve the name of the current Git branch.
+
+        Args:
+            None
+
+        Raises:
+            DGitCommandError: If the branch name cannot be determined.
+
+        Returns:
+            str: The name of the current branch.
+        """
+
         cmd = ["branch", "--show-current"]
         result = self.run_git_cmd(*cmd)
         branch = result.out.splitlines()[0].strip()
@@ -278,6 +303,21 @@ class Repo:
         *,
         method: str | None = None,
     ) -> str:
+        """Find the common ancestor commit of two branches.
+
+        Args:
+            branch1 (str): The first branch name.
+            branch2 (str): The second branch name.
+            method (str | None, optional): Merge base calculation method,
+                either 'fork-point' or 'octopus'. Defaults to None.
+
+        Raises:
+            DGitCommandError: If the merge base cannot be determined.
+
+        Returns:
+            str: The commit hash of the common ancestor.
+        """
+
         cmd = ["merge-base", branch1, branch2]
         if method:
             if method not in {"fork-point", "octopus"}:
@@ -646,12 +686,33 @@ class Repo:
         return rslt
 
     def get_branches_with_commit(self, commit: str) -> list[str]:
+        """Get a list of branches that contain a given commit.
+
+        Args:
+            commit (str): The commit hash to check.
+
+        Returns:
+            list[str]: A list of branch names that contain the commit.
+        """
+
         cmd = ["branch", "--contains", commit]
         result = self.run_git_cmd(*cmd)
         branches = [b.strip() for b in result.out.splitlines()]
         return branches
 
     def get_last_commit_sha(self, branch: str | None = None):
+        """Get the SHA of the last commit on a specified branch.
+
+        Args:
+            branch (str | None): The branch name. Defaults to None.
+
+        Raises:
+            DGitCommandError: If the last commit SHA cannot be retrieved.
+
+        Returns:
+            str: The SHA of the last commit.
+        """
+
         # git show --pretty=format:"%H" --no-patch develop
         cmd = ["show", "--pretty=format:%H", "--no-patch"]
         if branch:
@@ -665,6 +726,18 @@ class Repo:
         return commit
 
     def last_commit_date(self) -> datetime | None:
+        """Get the SHA of the last commit on a specified branch.
+
+        Args:
+            branch (str | None): The branch name. Defaults to None.
+
+        Raises:
+            DGitCommandError: If the last commit SHA cannot be retrieved.
+
+        Returns:
+            str: The SHA of the last commit.
+        """
+
         result = self.run_git_cmd(LOG, "-1", "--format=%cd")
         first_line = result.out.splitlines()[0]
         try:
