@@ -255,7 +255,7 @@ def setup_logger(logconf: config_model.LoggingConfig | None):
     #     version = metadata.version("dblocks_core")
     # except metadata.PackageNotFoundError:
     #     version = "<version info not available>"
-    # logger.info(f"debbie version: {version}")
+    # logger.info(f"dbe version: {version}")
 
 
 def _censore_keys(
