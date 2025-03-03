@@ -24,7 +24,7 @@ TERADATA = "teradata"
 
 DATABASE_LOG_LEVEL = 15
 
-# typoes of objects debbie can manage
+# typoes of objects dbe can manage
 MANAGED_TYPES = [
     DATABASE,
     TABLE,
@@ -36,7 +36,7 @@ MANAGED_TYPES = [
     FUNCTION,
 ]
 
-# types of object debbie can deploy
+# types of object dbe can deploy
 GENERIC_SQL = "SQL"
 GENERIC_BTEQ = "BTEQ"
 DEPLOYABLE_TYPES = [*MANAGED_TYPES, GENERIC_SQL, GENERIC_BTEQ]
