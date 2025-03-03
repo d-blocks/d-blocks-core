@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, Iterable, Tuple
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -14,6 +14,139 @@ TO_COPY = (
     git.FileStatus.MODIFIED,
     git.FileStatus.UNTRACKED,
 )
+
+
+# FIXME: API - we should be able to run either against a different branch or a different commit
+def copy(
+    repo: git.Repo,
+    diff_against: str,
+    diff_ident: str,
+    into_subdir: Path,
+    *,
+    subdir_list: Iterable[Path | str] | None = None,
+):
+    changes = changes_against(repo, diff_against, diff_ident, subdir_list=subdir_list)
+
+    # prep copy from/to pairs
+    # get path relative to subdir, if list of subdirs was given
+    copies = []
+    dirs = set()
+
+    can_copy = [
+        git.FileStatus.ADDED,
+        git.FileStatus.MODIFIED,
+        git.FileStatus.COPIED,
+        git.FileStatus.RENAMED,
+        git.FileStatus.UNTRACKED,
+        git.FileStatus.UNMERGED,
+    ]
+
+    for c in changes:
+        if c.change not in can_copy:
+            continue
+        copy_from = repo.repo_dir / c.rel_path
+        copy_to = into_subdir / c.rel_path
+
+        parent = copy_to.parent
+        if parent not in dirs:
+            parent.mkdir(exist_ok=True, parents=True)
+            dirs.add(parent)
+
+        shutil.copy(copy_from, copy_to)
+
+    return changes
+
+
+def changes_against(
+    repo: git.Repo,
+    diff_against: str,
+    diff_ident: str,
+    *,
+    subdir_list: list[Path, str] | None,
+) -> list[git.GitChangedPath]:
+    # what do we diff against, what changes do we have?
+    if diff_against == "commit":
+        changes = changes_against_commit(repo, baseline_commit=diff_ident)
+    elif diff_against == "branch":
+        changes = changes_against_branch(repo, baseline_branch=diff_ident)
+    else:
+        raise exc.DOperationsError(
+            f"diff_against: should be one of ('commit','branch'): {diff_against}"
+        )
+    if subdir_list:
+        subdir_list_ = [repo.repo_dir / s for s in subdir_list]
+        changes = filter_subdir(changes, subdir_list_)
+    return changes
+
+
+def filter_subdir(
+    changes: list[git.GitChangedPath],
+    subdir_list: list[Path],
+) -> list[git.GitChangedPath]:
+    subdir_list_ = [s.as_posix() + "/" for s in subdir_list]
+
+    def _is_in_list(p: Path):
+        for subdir in subdir_list_:
+            if p.as_posix().startswith(subdir):
+                return True
+
+    return [c for c in changes if _is_in_list(c.abs_path)]
+
+
+def changes_against_commit(
+    repo: git.Repo,
+    *,
+    baseline_commit: str,
+) -> list[git.GitChangedPath]:
+    # check that the commit is on current branch
+    feature_branch = repo.get_current_branch()
+    branches_with_commit = repo.get_branches_with_commit(baseline_commit)
+    if feature_branch not in branches_with_commit:
+        raise exc.DOperationsError(
+            f"commit ({baseline_commit}) is not in current branch ({feature_branch})\n"
+            f"{branches_with_commit=}"
+        )
+    # find latest commit
+    last_commit_on_branch = repo.get_last_commit_sha(feature_branch)
+    logger.info(f"latest commit is {last_commit_on_branch}")
+
+    # get full changespec
+    changes = repo.changes_between_commits(
+        baseline_commit=baseline_commit,
+        last_commit=last_commit_on_branch,
+    )
+    logger.info(f"full changespec: {len(changes)} items")
+    return changes
+
+
+def changes_against_branch(
+    repo: git.Repo,
+    *,
+    baseline_branch: str,
+) -> list[git.GitChangedPath]:
+
+    # what branch are we on
+    feature_branch = repo.get_current_branch()
+    logger.info(f"diffing branch {feature_branch} against {baseline_branch}")
+    if feature_branch == baseline_branch:
+        err = f"can not diff against current branch: {feature_branch}"
+        raise exc.DOperationsError(err)
+
+    # find last common commit
+    baseline_commit = repo.get_merge_base(baseline_branch, feature_branch)
+    logger.info(f"baseline commit is {baseline_commit}")
+
+    # find latest commit
+    last_commit_on_branch = repo.get_last_commit_sha(feature_branch)
+    logger.info(f"latest commit is {last_commit_on_branch}")
+
+    # get full changespec
+    changes = repo.changes_between_commits(
+        baseline_commit=baseline_commit,
+        last_commit=last_commit_on_branch,
+    )
+    logger.info(f"full changespec: {len(changes)} items")
+    return changes
 
 
 def copy_changed_files(
