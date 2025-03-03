@@ -262,11 +262,44 @@ class Repo:
 
         return self.run_git_cmd(INIT)
 
+    def get_current_branch(self) -> str:
+        cmd = ["branch", "--show-current"]
+        result = self.run_git_cmd(*cmd)
+        branch = result.out.splitlines()[0].strip()
+        if len(branch) == 0:
+            cmd_str = "git " + " ".join(cmd)
+            raise exc.DGitCommandError(f"failed to get current branch: {cmd_str}")
+        return branch
+
+    def get_merge_base(
+        self,
+        branch1: str,
+        branch2: str,
+        *,
+        method: str | None = None,
+    ) -> str:
+        cmd = ["merge-base", branch1, branch2]
+        if method:
+            if method not in {"fork-point", "octopus"}:
+                raise exc.DGitCommandError(
+                    f"method: can be only fork-point or octpus, not: {repr(method)}"
+                )
+            cmd = ["merge-base", f"--{method}", branch1, branch2]
+
+        result = self.run_git_cmd(*cmd)
+        commit = result.out.splitlines()[0].strip()
+        if len(commit) == 0:
+            cmd_str = "git " + " ".join(cmd)
+            raise exc.DGitCommandError(
+                f"failed to get last common commit between {branch1} and {branch2}: {cmd_str}"
+            )
+        return commit
+
     def changes_between_commits(
         self,
         *,
-        base_commit: str,
-        second_commit: str,
+        baseline_commit: str,
+        last_commit: str,
         rename_pct_simillarity: int = 100,
     ) -> list[GitChangedPath]:
         """
@@ -305,8 +338,8 @@ class Repo:
             DIFF,
             _SW_NAME_STATUS,
             f"-M{rename_pct_simillarity}%",
-            base_commit,
-            second_commit,
+            baseline_commit,
+            last_commit,
         )
         output_lines = result.out.splitlines()
         changes = []
@@ -611,6 +644,25 @@ class Repo:
 
         self.raise_on_error = raises
         return rslt
+
+    def get_branches_with_commit(self, commit: str) -> list[str]:
+        cmd = ["branch", "--contains", commit]
+        result = self.run_git_cmd(*cmd)
+        branches = [b.strip() for b in result.out.splitlines()]
+        return branches
+
+    def get_last_commit_sha(self, branch: str | None = None):
+        # git show --pretty=format:"%H" --no-patch develop
+        cmd = ["show", "--pretty=format:%H", "--no-patch"]
+        if branch:
+            cmd.append(branch)
+        result = self.run_git_cmd(*cmd)
+        commit = result.out.splitlines()[0].strip()
+        if len(commit) == 0:
+            raise exc.DGitCommandError(
+                "failed to get last commit: git " + " ".join(cmd)
+            )
+        return commit
 
     def last_commit_date(self) -> datetime | None:
         result = self.run_git_cmd(LOG, "-1", "--format=%cd")
