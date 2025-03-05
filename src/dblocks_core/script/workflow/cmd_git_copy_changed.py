@@ -132,6 +132,7 @@ def changes_against_commit(
     feature_branch = repo.get_current_branch()
     branches_with_commit = repo.get_branches_with_commit(baseline_commit)
     if feature_branch not in branches_with_commit:
+        # FIXME: we should be able to override this exception ... ask the user if he knows what he is doing, and continue gracefully
         raise exc.DOperationsError(
             f"commit ({baseline_commit}) is not in current branch ({feature_branch})\n"
             f"{branches_with_commit=}"
