@@ -190,7 +190,8 @@ def load_config(
     def _absolute(p: Path, default: Path | None = None):
         if default is not None and p is None or p == Path("."):
             p = default
-        return p if p.is_absolute() else p
+        p = p if p.is_absolute() else p
+        return p.resolve()
 
     # These paths ought to be relative to repo root, or cwd. Make them absolute.
     config.metadata_dir = _absolute(config.metadata_dir)
