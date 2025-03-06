@@ -21,12 +21,14 @@ LOG = "log"
 STATUS = "status"
 DIFF_TREE = "diff-tree"
 DIFF = "diff"
+BRANCH = "branch"
 
 _SW_AMEND = "--amend"
 _SW_PORCELAIN = "--porcelain"
 _SW_ALL = "--all"
 _DTTM_MASK = "%Y-%m-%d %H:%M:%S"
 _SW_NAME_STATUS = "--name-status"
+_FMT_BRANCH_NAME = '--format="%(refname:short)"'  # no asterisk before active branch
 
 
 # There are three different types of states that are shown using this format,
@@ -288,7 +290,7 @@ class Repo:
             str: The name of the current branch.
         """
 
-        cmd = ["branch", "--show-current"]
+        cmd = [BRANCH, "--show-current"]
         result = self.run_git_cmd(*cmd)
         branch = result.out.splitlines()[0].strip()
         if len(branch) == 0:
@@ -695,7 +697,7 @@ class Repo:
             list[str]: A list of branch names that contain the commit.
         """
 
-        cmd = ["branch", "--contains", commit]
+        cmd = [BRANCH, _FMT_BRANCH_NAME, "--contains", commit]
         result = self.run_git_cmd(*cmd)
         branches = [b.strip() for b in result.out.splitlines()]
         return branches
@@ -724,6 +726,10 @@ class Repo:
                 "failed to get last commit: git " + " ".join(cmd)
             )
         return commit
+
+    def is_commit_on_branch(self, branch: str, commit: str) -> bool:
+        branches_with_commit = self.get_branches_with_commit(commit)
+        return branch in branches_with_commit
 
     def last_commit_date(self) -> datetime | None:
         """Get the SHA of the last commit on a specified branch.

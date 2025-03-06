@@ -8,6 +8,10 @@ from rich.prompt import Prompt
 from dblocks_core import exc
 from dblocks_core.config.config import logger
 from dblocks_core.git import git
+from dblocks_core.model import config_model
+
+console = Console()
+
 
 TO_COPY = (
     git.FileStatus.ADDED,  # staged
@@ -21,10 +25,50 @@ def copy(
     repo: git.Repo,
     diff_against: str,
     diff_ident: str,
-    into_subdir: Path,
+    pkg_dir: Path,
     *,
+    package_name: str,
+    metadata_dir: Path,
+    steps_subdir: Path,
     subdir_list: Iterable[Path | str] | None = None,
 ):
+    # repo, check if it is dirty
+    repo = git.repo_factory(raise_on_error=True)
+    if repo is not None and repo.is_dirty():
+        logger.warning("Repo is not clean!")
+        console.print(
+            "Repo is not clean!\n"
+            "Extraction will not run, unless it is continuation of previously "
+            "unfinished process.",
+            style="bold red",
+        )
+        really = Prompt.ask(
+            "Are you sure you want to continue?\n"
+            "This could lead to potentially huge diff! "
+            "(yes/no)",
+            default="no",
+        ).strip()
+        if really not in ("yes", "y"):
+            logger.error(f"action canceled by prompt: {really}")
+            return
+
+    # repo, check if the commit is on current branch
+    if diff_against == "commit":
+        current_branch = repo.get_current_branch()
+        if not repo.is_commit_on_branch(branch=current_branch, commit=diff_ident):
+            console.print(
+                f"The commit '{diff_ident}' is not on current branch '{current_branch}'",
+                style="bold blue",
+            )
+            really = Prompt.ask(
+                "Are you sure you want to continue? (yes/no)",
+                default="no",
+            ).strip()
+            if really not in ("yes", "y"):
+                logger.error(f"action canceled by prompt: {really}")
+                return
+
+    # get list of changes
     changes = changes_against(repo, diff_against, diff_ident, subdir_list=subdir_list)
 
     # prep copy from/to pairs
@@ -42,19 +86,50 @@ def copy(
     ]
 
     for c in changes:
+        # FIXME: deletions, what to do about them
         if c.change not in can_copy:
             continue
         copy_from = repo.repo_dir / c.rel_path
-        copy_to = into_subdir / c.rel_path
+        if not copy_from.exists():
+            logger.warning(f"file does not exists: {copy_from}")
+            continue
+        copy_to = (
+            pkg_dir
+            / package_name
+            / _rel_path_in_package(
+                repo_dir_absp=repo.repo_dir,
+                src_file_absp=c.abs_path,
+                metadata_dir_absp=metadata_dir,
+                steps_subdir=steps_subdir,
+            )
+        )
+        logger.info(f"\nFROM: {copy_from}\nTO  : {copy_to}")
 
-        parent = copy_to.parent
-        if parent not in dirs:
-            parent.mkdir(exist_ok=True, parents=True)
-            dirs.add(parent)
+        # parent = copy_to.parent
+        # if parent not in dirs:
+        #     parent.mkdir(exist_ok=True, parents=True)
+        #     dirs.add(parent)
 
-        shutil.copy(copy_from, copy_to)
+        # shutil.copy(copy_from, copy_to)
 
-    return changes
+
+def _rel_path_in_package(
+    *,
+    repo_dir_absp: Path,
+    src_file_absp: Path,
+    metadata_dir_absp: Path,
+    steps_subdir: Path,
+) -> Path:
+    # check if the path is in metadata directory
+    # if it is, prepare it as the package
+    if src_file_absp.is_relative_to(metadata_dir_absp):
+        # FIXME: name of the step based on object type
+        step_name = "whatever"
+        db_name = src_file_absp.parent.name
+        return steps_subdir / step_name / db_name / src_file_absp.name
+
+    # all other files ...
+    return src_file_absp.relative_to(repo_dir_absp)
 
 
 def changes_against(
@@ -132,10 +207,8 @@ def changes_against_commit(
     feature_branch = repo.get_current_branch()
     branches_with_commit = repo.get_branches_with_commit(baseline_commit)
     if feature_branch not in branches_with_commit:
-        # FIXME: we should be able to override this exception ... ask the user if he knows what he is doing, and continue gracefully
-        raise exc.DOperationsError(
-            f"commit ({baseline_commit}) is not in current branch ({feature_branch})\n"
-            f"{branches_with_commit=}"
+        logger.warning(
+            f"commit ({baseline_commit}) is not in current branch ({feature_branch})"
         )
     # find latest commit
     last_commit_on_branch = repo.get_last_commit_sha(feature_branch)
