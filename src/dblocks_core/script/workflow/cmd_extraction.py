@@ -40,7 +40,7 @@ def run_extraction(
                 [
                     f"This environment has configured git branch: {env.git_branch}",
                     "However, we are not in a git repository.",
-                    "Either run 'debbie init' (recommended) or 'git init'.",
+                    "Either run 'dbe init' (recommended) or 'git init'.",
                 ]
             )
             raise exc.DOperationsError(message)
@@ -152,7 +152,7 @@ def run_extraction(
         if repo is not None and prev_db is not None and db != prev_db:
             if commit and not repo.is_clean():
                 repo.add()
-                repo.commit(f"debbie env-extract {env_name}: {db}")
+                repo.commit(f"dbe env-extract {env_name}: {db}")
 
         # next iteration
         prev_db = obj.database_name
@@ -162,7 +162,7 @@ def run_extraction(
         if not repo.is_clean():
             if commit:
                 repo.add()
-                repo.commit(f"debbie env-extract {env_name}: delete dropped objects")
+                repo.commit(f"dbe env-extract {env_name}: delete dropped objects")
             else:
                 logger.warning("Please, commit your changes.")
 
@@ -197,7 +197,7 @@ def run_extraction(
 #                 [
 #                     f"This environment has configured git branch: {env.git_branch}",
 #                     "However, we are not in a git repository.",
-#                     "Either run 'debbie init' (recommended) or 'git init'.",
+#                     "Either run 'dbe init' (recommended) or 'git init'.",
 #                 ]
 #             )
 #             raise exc.DOperationsError(message)
@@ -378,7 +378,7 @@ def run_extraction(
 #         if commit and repo is not None:
 #             if not repo.is_clean():
 #                 repo.add()
-#                 repo.commit(f"debbie env-extract {env_name}: {database.database_name}")
+#                 repo.commit(f"dbe env-extract {env_name}: {database.database_name}")
 
 #     # delete droped objects
 #     wrt.drop_nonex_objects(
@@ -392,7 +392,7 @@ def run_extraction(
 #         if not repo.is_clean():
 #             if commit:
 #                 repo.add()
-#                 repo.commit(f"debbie env-extract {env_name}: delete dropped objects")
+#                 repo.commit(f"dbe env-extract {env_name}: delete dropped objects")
 #             else:
 #                 logger.warning("Please, commit your changes.")
 

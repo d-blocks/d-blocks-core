@@ -134,7 +134,7 @@ def get_default_config(
     return dedent(
         f"""
         # this value is important to keep track of changes of the configuration schema
-        # do not change, unless you are migrating to a different version of debbie utility
+        # do not change, unless you are migrating to a different version of dbe utility
         config_version = "1.0.0"
 
         # context directrory

@@ -24,7 +24,7 @@ IDENTIFIERS = (PREFIX, SUFFIX)
 # how do I move data among these pipelines ... ?
 #
 # or
-# debbie pkg <env>
+# dbe pkg <env>
 # --filter-by-db <db>
 # --filter-by-name <regex>
 # --filter-by-age <spec>

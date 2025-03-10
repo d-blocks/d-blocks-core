@@ -196,6 +196,7 @@ def env_extract(
     ctx.done()
 
 
+# FIXME: by default, if the directory is not given by the user, ask him if he wants to deploy everything
 @app.command()
 def env_deploy(
     environment: Annotated[
@@ -412,6 +413,14 @@ def ctx_drop(
 def quickstart():
     """Quickstart on demo repository (https://github.com/d-blocks/d-blocks-demo/blob/main/README.md)"""
     cmd_quickstart.quickstart()
+
+
+@app.command()
+def version():
+    """Print d-blocks-core version."""
+    console = Console()
+    console.print("Version: ", style="blue bold", end="")
+    console.print(config.get_installed_version())
 
 
 @exc.catch_our_errors()
