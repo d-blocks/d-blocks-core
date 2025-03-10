@@ -1,4 +1,5 @@
 import copy
+import importlib.metadata
 import inspect
 import json
 import logging
@@ -408,3 +409,10 @@ class _LoggingInterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(
             level, record.getMessage()
         )
+
+
+def get_installed_version(package_name: str = "d-blocks-core") -> str:
+    try:
+        return importlib.metadata.version(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        return "Package not found"

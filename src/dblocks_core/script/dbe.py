@@ -415,6 +415,14 @@ def quickstart():
     cmd_quickstart.quickstart()
 
 
+@app.command()
+def version():
+    """Print d-blocks-core version."""
+    console = Console()
+    console.print("Version: ", style="blue bold", end="")
+    console.print(config.get_installed_version())
+
+
 @exc.catch_our_errors()
 def main():
     app()
