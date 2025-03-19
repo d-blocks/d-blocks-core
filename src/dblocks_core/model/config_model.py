@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from attrs import field, frozen
+from attrs import define, field
 from loguru import logger
 
 from dblocks_core.model import global_converter  # noqa: F401
@@ -87,19 +87,21 @@ def _assert_dict_of_strings(self, attribute, value):
             raise err
 
 
-@frozen
+@define
 class ExtractionParameters:
     databases: list[str] = field(factory=list)
 
 
-@frozen
+@define
 class WriterParameters:
-    target_dir: Path = field(converter=Path)
+    target_dir: Path = field(
+        converter=Path, default=Path(".")
+    )  # defaults to Config.metadata_dir
     encoding: str = field(default="utf-8")
     errors: str = field(default="strict")
 
 
-@frozen
+@define
 class EnvironParameters:
     writer: WriterParameters
     host: str = field(validator=_assert_not_empty_string)
@@ -123,7 +125,7 @@ class EnvironParameters:
     git_branch: str | None = field(default=None)
 
 
-@frozen
+@define
 class LoggingSink:
     sink: str
     format: str | None = field(default=None)
@@ -135,26 +137,31 @@ class LoggingSink:
     level: str = field(default="DEBUG")
 
 
-@frozen
+@define
 class LoggingConfig:
     console_log_level: str = field(default="INFO")
     other_sinks: dict[str, LoggingSink] = field(factory=dict)
 
 
-@frozen
+@define
 class PackagerConfig:
-    package_dir: Path = field(default=Path("pkg"), converter=Path)
+    package_dir: Path = field(
+        default=Path("pkg"), converter=Path
+    )  # relative to cwd/repo
     steps_subdir: Path = field(default=Path("db/teradata"), converter=Path)
+    metadata_repo_subdir: Path = field(default=Path("meta"), converter=Path)
     safe_deletion_limit: int = field(default=50)
     interactive: bool = field(default=True)
     case_insensitive_dirs: bool = field(default=True)
 
 
-@frozen
+@define
 class Config:
     config_version: str
     environments: dict[str, EnvironParameters] = field(validator=_assert_lcase_keys)
     logging: LoggingConfig | None = field(default=None)
+    metadata_dir: Path = field(default="meta", converter=Path)  # relative to cwd/repo
+    package_dir: Path = field(default="pkg", converter=Path)  # relative to cwd/repo
     ctx_dir: Path = field(default=Path("."), converter=Path)
     report_dir: Path = field(default=Path("."), converter=Path)
     packager: PackagerConfig = field(factory=PackagerConfig)

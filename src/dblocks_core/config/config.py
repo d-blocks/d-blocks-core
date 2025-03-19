@@ -11,6 +11,7 @@ import sys
 # tomllib je až od verze 3.11, tomli je backport pro starší verze Pythonu
 import tomllib
 from importlib import metadata
+from pathlib import Path
 from typing import Any, Callable, Iterable
 
 import cattrs
@@ -19,7 +20,8 @@ from cattrs import transform_error
 from loguru import logger
 
 from dblocks_core import exc
-from dblocks_core.model import config_model, meta_model
+from dblocks_core.git import git
+from dblocks_core.model import config_model
 
 DBLOCKS_NAME = "d-blocks"
 SECRETS_FILE = ".dblocks-secrets.toml"
@@ -180,6 +182,29 @@ def load_config(
         logger.error(f"config in question:\n{pprint.pformat(censored_config)}")
         raise exc.DConfigError("\n".join(messages)) from None
 
+    # Fix the directory structure. Make paths relative to either git repo, or to the working directory
+    # (only if we are not in a git repo)
+    repo_root = git.find_repo_root(Path.cwd())
+    if repo_root is None:
+        repo_root = Path.cwd()
+
+    def _absolute(p: Path, default: Path | None = None):
+        if default is not None and p is None or p == Path("."):
+            p = default
+        p = p if p.is_absolute() else p
+        return p.resolve()
+
+    # These paths ought to be relative to repo root, or cwd. Make them absolute.
+    config.metadata_dir = _absolute(config.metadata_dir)
+    config.package_dir = _absolute(config.package_dir)
+    config.packager.package_dir = _absolute(
+        config.packager.package_dir,
+        config.package_dir,
+    )
+    for prms in config.environments.values():
+        prms.writer.target_dir = _absolute(prms.writer.target_dir, config.metadata_dir)
+
+    # config logger
     if setup_config and config.logging:
         setup_logger(config.logging)
 
