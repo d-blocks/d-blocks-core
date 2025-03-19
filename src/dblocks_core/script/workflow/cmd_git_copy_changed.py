@@ -9,6 +9,7 @@ from dblocks_core import exc
 from dblocks_core.config.config import logger
 from dblocks_core.git import git
 from dblocks_core.model import config_model
+from dblocks_core.writer import fsystem
 
 console = Console()
 
@@ -20,7 +21,6 @@ TO_COPY = (
 )
 
 
-# FIXME: API - we should be able to run either against a different branch or a different commit
 def copy(
     repo: git.Repo,
     diff_against: str,
@@ -30,7 +30,7 @@ def copy(
     package_name: str,
     metadata_dir: Path,
     steps_subdir: Path,
-    subdir_list: Iterable[Path | str] | None = None,
+    include_only: Iterable[Path | str] | None = None,
 ):
     # repo, check if it is dirty
     repo = git.repo_factory(raise_on_error=True)
@@ -69,12 +69,10 @@ def copy(
                 return
 
     # get list of changes
-    changes = changes_against(repo, diff_against, diff_ident, subdir_list=subdir_list)
+    changes = changes_against(repo, diff_against, diff_ident, include_only=include_only)
 
     # prep copy from/to pairs
     # get path relative to subdir, if list of subdirs was given
-    copies = []
-    dirs = set()
 
     can_copy = [
         git.FileStatus.ADDED,
@@ -85,6 +83,23 @@ def copy(
         git.FileStatus.UNMERGED,
     ]
 
+    if len(changes) == 0:
+        logger.warning("Empty list of changes files.")
+        return
+
+    # target directory, ask for confirmation
+    pkg_root_dir = pkg_dir / package_name
+    logger.info(f"Changeset length is: {len(changes)}")
+    logger.info(f"Target dir is: {pkg_root_dir.as_posix()}")
+    really = Prompt.ask(
+        "Are you sure you want to continue? (yes/no)",
+        default="no",
+    ).strip()
+    if really not in ("yes", "y"):
+        logger.error(f"action canceled by prompt: {really}")
+        return
+
+    dirs = set()
     for c in changes:
         # FIXME: deletions, what to do about them
         if c.change not in can_copy:
@@ -93,24 +108,19 @@ def copy(
         if not copy_from.exists():
             logger.warning(f"file does not exists: {copy_from}")
             continue
-        copy_to = (
-            pkg_dir
-            / package_name
-            / _rel_path_in_package(
-                repo_dir_absp=repo.repo_dir,
-                src_file_absp=c.abs_path,
-                metadata_dir_absp=metadata_dir,
-                steps_subdir=steps_subdir,
-            )
+        copy_to = pkg_root_dir / _rel_path_in_package(
+            repo_dir_absp=repo.repo_dir,
+            src_file_absp=c.abs_path,
+            metadata_dir_absp=metadata_dir,
+            steps_subdir=steps_subdir,
         )
-        logger.info(f"\nFROM: {copy_from}\nTO  : {copy_to}")
 
-        # parent = copy_to.parent
-        # if parent not in dirs:
-        #     parent.mkdir(exist_ok=True, parents=True)
-        #     dirs.add(parent)
+        parent = copy_to.parent
+        if parent not in dirs:
+            parent.mkdir(exist_ok=True, parents=True)
+            dirs.add(parent)
 
-        # shutil.copy(copy_from, copy_to)
+        shutil.copy(copy_from, copy_to)
 
 
 def _rel_path_in_package(
@@ -119,16 +129,27 @@ def _rel_path_in_package(
     src_file_absp: Path,
     metadata_dir_absp: Path,
     steps_subdir: Path,
+    subdir_list: Iterable[str | Path] | None = None,
 ) -> Path:
     # check if the path is in metadata directory
     # if it is, prepare it as the package
     if src_file_absp.is_relative_to(metadata_dir_absp):
-        # FIXME: name of the step based on object type
-        step_name = "whatever"
+        # FIXME: tight coupling, also see test cases!
+        step_name = fsystem.EXT_TO_STEP.get(
+            src_file_absp.suffix,
+            fsystem.STP_GENERIC_SQL,
+        )
         db_name = src_file_absp.parent.name
         return steps_subdir / step_name / db_name / src_file_absp.name
 
-    # all other files ...
+    # if subdir list was given, check if we are relative to one of them
+    if subdir_list:
+        for sd in subdir_list:
+            sd_abs = repo_dir_absp / sd
+            if src_file_absp.is_relative_to(sd_abs):
+                return src_file_absp.relative_to(sd_abs)
+
+    # all other files, simply use relative path in the repo
     return src_file_absp.relative_to(repo_dir_absp)
 
 
@@ -137,7 +158,7 @@ def changes_against(
     diff_against: str,
     diff_ident: str,
     *,
-    subdir_list: list[Path, str] | None,
+    include_only: list[Path, str] | None,
 ) -> list[git.GitChangedPath]:
     """Compares last committed state of the current branch to either
     a different branch, or to a commit on the same branch.
@@ -165,8 +186,8 @@ def changes_against(
         raise exc.DOperationsError(
             f"diff_against: should be one of ('commit','branch'): {diff_against}"
         )
-    if subdir_list:
-        subdir_list_ = [repo.repo_dir / s for s in subdir_list]
+    if include_only:
+        subdir_list_ = [repo.repo_dir / s for s in include_only]
         changes = _filter_subdir(changes, subdir_list_)
     return changes
 

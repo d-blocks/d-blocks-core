@@ -288,8 +288,16 @@ def pkg_from_diff(
         typer.Argument(help="Baseline - either name of the branch, or commit hash."),
     ],
     package_name: Annotated[
-        str, typer.Argument(help="Name of the package we will prepare.")
+        str,
+        typer.Argument(help="Name of the package we will prepare."),
     ],
+    include_only: Annotated[
+        list[str],
+        typer.Option(
+            help="Name of the subdirectory that should be kept in he diff. "
+            "If not provided, keep everything."
+        ),
+    ] = None,
 ):
     cfg = config.load_config()
     repo = git.repo_factory(raise_on_error=True)
@@ -302,6 +310,7 @@ def pkg_from_diff(
         pkg_dir=cfg.packager.package_dir,
         package_name=package_name,
         steps_subdir=cfg.packager.steps_subdir,
+        include_only=include_only,
     )
 
 

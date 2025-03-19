@@ -699,7 +699,10 @@ class Repo:
 
         cmd = [BRANCH, _FMT_BRANCH_NAME, "--contains", commit]
         result = self.run_git_cmd(*cmd)
-        branches = [b.strip() for b in result.out.splitlines()]
+        branches = [
+            b.strip().removeprefix('"').removesuffix('"')
+            for b in result.out.splitlines()
+        ]
         return branches
 
     def get_last_commit_sha(self, branch: str | None = None):
@@ -729,6 +732,7 @@ class Repo:
 
     def is_commit_on_branch(self, branch: str, commit: str) -> bool:
         branches_with_commit = self.get_branches_with_commit(commit)
+        logger.info(branches_with_commit)
         return branch in branches_with_commit
 
     def last_commit_date(self) -> datetime | None:
