@@ -19,6 +19,7 @@ from dblocks_core.parse import prsr_simple
 from dblocks_core.script.workflow import (
     cmd_deployment,
     cmd_extraction,
+    cmd_git_copy_changed,
     cmd_init,
     cmd_pkg_deployment,
     cmd_quickstart,
@@ -275,6 +276,42 @@ def env_deploy(
         else:
             console.print("DONE with errors", style="bold red")
             console.print("We do NOT delete context.")
+
+
+@app.command()
+def pkg_from_diff(
+    diff_against: Annotated[
+        str, typer.Argument(help="Diff against 'branch' or 'commit'.")
+    ],
+    diff_ident: Annotated[
+        str,
+        typer.Argument(help="Baseline - either name of the branch, or commit hash."),
+    ],
+    package_name: Annotated[
+        str,
+        typer.Argument(help="Name of the package we will prepare."),
+    ],
+    include_only: Annotated[
+        list[str],
+        typer.Option(
+            help="Name of the subdirectory that should be kept in he diff. "
+            "If not provided, keep everything."
+        ),
+    ] = None,
+):
+    cfg = config.load_config()
+    repo = git.repo_factory(raise_on_error=True)
+
+    cmd_git_copy_changed.copy(
+        repo,
+        diff_against,
+        diff_ident,
+        metadata_dir=cfg.metadata_dir,
+        pkg_dir=cfg.packager.package_dir,
+        package_name=package_name,
+        steps_subdir=cfg.packager.steps_subdir,
+        include_only=include_only,
+    )
 
 
 @app.command()
