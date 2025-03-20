@@ -383,18 +383,19 @@ def pkg_deploy(
 def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
     cfg = config.load_config()
-    plugins = config.load_plugins()
-    if len(plugins) > 0:
-        logger.info(f"discovered plugins: {plugins.keys()}")
-        for plugin_name, plugin in plugins.items():
-            if not isinstance(plugin, plugin_model.PluginHello):
-                continue
-            logger.info(f"calling plugin {plugin_name} which is based on PluginHello")
-            try:
-                retval = plugin.hello()
-                logger.info(f"{plugin_name}: returned {repr(retval)}")
-            except Exception as err:
-                logger.error(f"{plugin_name}: {str(err)}")
+
+    hello_plugins = config.plugin_instances(plugin_model.PluginHello)
+    for plug_instance in hello_plugins:
+        logger.info(f"calling: {plug_instance.module_name}.{plug_instance.class_name}")
+        hello_callable: plugin_model.PluginHello = plug_instance.instance
+        retval = hello_callable.hello()
+        logger.info(f"{plug_instance.module_name}.{plug_instance.class_name}: {retval}")
+
+    validator_plugins = config.plugin_instances(plugin_model.PluginCfgCheck)
+    for validator in validator_plugins:
+        logger.info(f"calling: {validator.module_name}.{validator.class_name}")
+        validator_callable: plugin_model.PluginCfgCheck = validator.instance
+        validator_callable.check_config(cfg)
 
     logger.info("OK")
 
