@@ -1,6 +1,16 @@
 from abc import ABC
+from typing import Callable
+
+from attrs import frozen
 
 from dblocks_core.model import config_model
+
+
+@frozen
+class _PluginInstance:
+    module_name: str
+    class_name: str
+    instance: Callable
 
 
 class PluginHello(ABC):

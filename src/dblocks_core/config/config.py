@@ -58,19 +58,60 @@ def __iter_namespace(ns_pkg):
     return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
 
-__PLUGINS = {
+__PLUGABLE_MODULES = {
     name: importlib.import_module(name)
     for finder, name, ispkg in __iter_namespace(dblocks_core.plugin)
 }
 
+__PLUGABLE_MODULES = {
+    k: __PLUGABLE_MODULES[k] for k in sorted(__PLUGABLE_MODULES.keys())
+}
 
-def load_plugins() -> dict[str, ModuleType]:
+
+def load_plugins() -> dict[str, list[Callable]]:
     """Returns dict of plugins under dblocks_core.plugin
 
     Returns:
         dict[str, ModuleType]: dict of modules
     """
-    return __PLUGINS
+    plugins = {}
+    for name, plugin_module in __PLUGABLE_MODULES.items():
+        if not hasattr(plugin_module, "PLUGINS"):
+            logger.warning(f"{name}: does not contain PLUGINS variable")
+            continue
+        plugins[name] = getattr(plugin_module, "PLUGINS")
+
+    return plugins
+
+
+def plugin_instances(class_) -> list[plugin_model._PluginInstance]:
+    """Returns list of plugin instances of specified base class.
+
+    Args:
+        class_ (_type_): one of bblocks_core.model.plugin_model classes
+
+    Returns:
+        list[plugin_model._PluginInstance]: list of instantiated plugins of said class
+    """
+    logger.trace(class_)
+    plugin_modules = load_plugins()
+    plugin_instances = []
+    for plugin_name, pluggable_instances in plugin_modules.items():
+        logger.trace(plugin_name)
+        for plug_instance in pluggable_instances:
+            logger.trace(plug_instance)
+            if not isinstance(plug_instance, class_):
+                logger.trace("skipping the instance")
+                continue
+            plugin_instances.append(
+                plugin_model._PluginInstance(
+                    module_name=plugin_name,
+                    class_name=plug_instance.__class__.__name__,
+                    instance=plug_instance,
+                )
+            )
+    logger.trace(plugin_instances)
+    return plugin_instances
 
 
 def get_environment_from_config(
@@ -231,12 +272,14 @@ def load_config(
         setup_logger(config.logging)
 
     # use plugins to validate the config
-    plugins = load_plugins()
-    for plugin_name, plugin in plugins.items():
-        if isinstance(plugin, plugin_model.PluginCfgCheck):
-            logger.info(f"execute plugin: {plugin_name}")
-            plugin.check_config()
-
+    # class PluginCfgCheck
+    plugin_modules = load_plugins()
+    for plugin_name, pluggable_instances in plugin_modules.items():
+        for plug_instance in pluggable_instances:
+            if not isinstance(plug_instance, plugin_model.PluginCfgCheck):
+                continue
+            logger.info(f"calling: {plugin_name}.{plug_instance.__class__.__name__}")
+            plug_instance.check_config()
     return config
 
 
