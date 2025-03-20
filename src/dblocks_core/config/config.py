@@ -1,10 +1,11 @@
 import copy
-import importlib.metadata
+import importlib
 import inspect
 import json
 import logging
 import os
 import pathlib
+import pkgutil
 import pprint
 import sys
 
@@ -12,6 +13,7 @@ import sys
 import tomllib
 from importlib import metadata
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Callable, Iterable
 
 import cattrs
@@ -19,9 +21,10 @@ import platformdirs
 from cattrs import transform_error
 from loguru import logger
 
+import dblocks_core.plugin
 from dblocks_core import exc
 from dblocks_core.git import git
-from dblocks_core.model import config_model
+from dblocks_core.model import config_model, plugin_model
 
 DBLOCKS_NAME = "d-blocks"
 SECRETS_FILE = ".dblocks-secrets.toml"
@@ -49,6 +52,25 @@ _SECRETS = ["password"]
 REDACTED = "<redacted>"
 ENVIRON_PREFIX = "DBLOCKS_"
 EXPECTED_CONFIG_VERSION = "1.0.0"
+
+
+def __iter_namespace(ns_pkg):
+    return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
+
+
+__PLUGINS = {
+    name: importlib.import_module(name)
+    for finder, name, ispkg in __iter_namespace(dblocks_core.plugin)
+}
+
+
+def load_plugins() -> dict[str, ModuleType]:
+    """Returns dict of plugins under dblocks_core.plugin
+
+    Returns:
+        dict[str, ModuleType]: dict of modules
+    """
+    return __PLUGINS
 
 
 def get_environment_from_config(
@@ -207,6 +229,13 @@ def load_config(
     # config logger
     if setup_config and config.logging:
         setup_logger(config.logging)
+
+    # use plugins to validate the config
+    plugins = load_plugins()
+    for plugin_name, plugin in plugins.items():
+        if isinstance(plugin, plugin_model.PluginCfgCheck):
+            logger.info(f"execute plugin: {plugin_name}")
+            plugin.check_config()
 
     return config
 

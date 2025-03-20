@@ -12,9 +12,8 @@ from typing_extensions import Annotated
 from dblocks_core import context, dbi, exc, writer
 from dblocks_core.config import config
 from dblocks_core.config.config import logger
-from dblocks_core.deployer import tokenizer
 from dblocks_core.git import git
-from dblocks_core.model import config_model
+from dblocks_core.model import plugin_model
 from dblocks_core.parse import prsr_simple
 from dblocks_core.script.workflow import (
     cmd_deployment,
@@ -384,6 +383,19 @@ def pkg_deploy(
 def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
     cfg = config.load_config()
+    plugins = config.load_plugins()
+    if len(plugins) > 0:
+        logger.info(f"discovered plugins: {plugins.keys()}")
+        for plugin_name, plugin in plugins.items():
+            if not isinstance(plugin, plugin_model.PluginHello):
+                continue
+            logger.info(f"calling plugin {plugin_name} which is based on PluginHello")
+            try:
+                retval = plugin.hello()
+                logger.info(f"{plugin_name}: returned {repr(retval)}")
+            except Exception as err:
+                logger.error(f"{plugin_name}: {str(err)}")
+
     logger.info("OK")
 
 
