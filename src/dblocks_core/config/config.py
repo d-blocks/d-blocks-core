@@ -126,6 +126,44 @@ def get_environment_from_config(
         )
 
 
+def load_config_dict(
+    encoding: str = "utf-8",
+    env_name_prefix: str = ENVIRON_PREFIX,
+    environ: dict[str, Any] | None = None,
+    *,
+    locations: Iterable[pathlib.Path] | None = None,
+) -> dict:
+    config_dictionaries = []
+    if locations is None:
+        locations = [pathlib.Path(d) for d in (DBLOCKS_FILE, SECRETS_FILE)]
+
+    for conf_file_name in locations:
+        found = False
+        for conf_dir in CONFIG_LOCATIONS:
+            f = pathlib.Path(conf_dir) / conf_file_name
+            try:
+                content = f.read_text(encoding=encoding, errors="strict")
+                data = tomllib.loads(content)
+                config_dictionaries.append(data)
+                found = True
+            except FileNotFoundError:
+                continue
+        if not found:
+            logger.warning(f"file not found: {conf_file_name}")
+
+    # config from environ
+    if environ is None:
+        environ = {k: v for k, v in os.environ.items()}
+    config_dictionaries.append(from_environ_dict(env_name_prefix, environ))
+
+    # combine dictionaries
+    config_dict = {}
+    for c in config_dictionaries:
+        config_dict = deep_merge_dicts(config_dict, c)
+
+    return config_dict
+
+
 def load_config(
     encoding: str = "utf-8",
     env_name_prefix: str = ENVIRON_PREFIX,
@@ -182,33 +220,12 @@ def load_config(
     to the expected structure of the Config model.
     """
     # config from files
-    config_dictionaries = []
-    if locations is None:
-        locations = [pathlib.Path(d) for d in (DBLOCKS_FILE, SECRETS_FILE)]
-
-    for conf_file_name in locations:
-        found = False
-        for conf_dir in CONFIG_LOCATIONS:
-            f = pathlib.Path(conf_dir) / conf_file_name
-            try:
-                content = f.read_text(encoding=encoding, errors="strict")
-                data = tomllib.loads(content)
-                config_dictionaries.append(data)
-                found = True
-            except FileNotFoundError:
-                continue
-        if not found:
-            logger.warning(f"file not found: {conf_file_name}")
-
-    # config from environ
-    if environ is None:
-        environ = {k: v for k, v in os.environ.items()}
-    config_dictionaries.append(from_environ_dict(env_name_prefix, environ))
-
-    # combine dictionaries
-    config_dict = {}
-    for c in config_dictionaries:
-        config_dict = deep_merge_dicts(config_dict, c)
+    config_dict = load_config_dict(
+        encoding=encoding,
+        env_name_prefix=env_name_prefix,
+        environ=environ,
+        locations=locations,
+    )
 
     # check version
     _config_version = ""
