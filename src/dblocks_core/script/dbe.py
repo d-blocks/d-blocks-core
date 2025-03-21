@@ -466,6 +466,84 @@ def quickstart():
 
 
 @app.command()
+def walk(
+    path: Annotated[str, typer.Argument(help="Path - either directory or a file.")],
+    plugin: Annotated[
+        str,
+        typer.Argument(help="Name of the walker to be called (case insensitive)."),
+    ],
+    environment: Annotated[
+        str | None,
+        typer.Argument(
+            help="Name of the environment you want to extract. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ] = None,
+):
+    """Executes a plugin on top of a file or directory."""
+    cfg_dict = config.load_config_dict()
+    cfg = config.load_config()
+    all_walkers = config.plugin_instances(plugin_model.PluginWalker)
+    if len(all_walkers) == 0:
+        logger.error(
+            "No walkers found, did you install the plugin you are trying to use?"
+        )
+        sys.exit(1)
+
+    walkers = [w for w in all_walkers if w.class_name.lower() == plugin.lower()]
+    if len(walkers) == 0:
+        logger.error(
+            f"No walkers if this name found: {plugin}; did you install the plugin you are trying to use?"
+        )
+        sys.exit(1)
+    elif len(walkers) > 1:
+        logger.warning(f"Expected to get 1 walker, got {len(walkers)}: {plugin}")
+
+    path_ = Path(path)
+
+    # walk
+    for walker in all_walkers:
+        logger.info(f"before: {walker.module_name}.{walker.class_name}")
+        walker_callable: plugin_model.PluginWalker = walker.instance
+        walker_callable.before(
+            path_,
+            environment,
+            cfg,
+            # kwargs
+            cfg_dict=cfg_dict,
+        )
+
+        logger.info(
+            f"walking: {walker.module_name}.{walker.class_name}: {path_.as_posix()}"
+        )
+        if path_.exists():
+            if path_.is_file():
+                walker_callable.walker(
+                    path_,
+                    environment,
+                    cfg,  # kwargs
+                    cfg_dict=cfg_dict,
+                )
+            elif path_.is_dir():
+                for f in path_.rglob("*.*"):
+                    walker_callable.walker(
+                        f,
+                        environment,
+                        cfg,  # kwargs
+                        cfg_dict=cfg_dict,
+                    )
+
+        logger.info(f"after: {walker.module_name}.{walker.class_name}")
+        walker_callable.after(
+            path_,
+            environment,
+            cfg,
+            # kwargs
+            cfg_dict=cfg_dict,
+        )
+
+
+@app.command()
 def version():
     """Print d-blocks-core version."""
     console = Console()
