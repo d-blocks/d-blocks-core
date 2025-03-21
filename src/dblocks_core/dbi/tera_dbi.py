@@ -116,16 +116,19 @@ def ignore_errors(err_list: str | list[str | int]):
         raise
 
 
-# TODO: translate this or at least do not show long log
-# OperationalError: (teradatasql.OperationalError) [Version 20.0.0.20] [Session 5978998] [Teradata Database] [Error 9794] File
-# system has reported ERRAMPOUTOFPHYSPACE error.
-#  at gosqldriver/teradatasql.formatError ErrorUtil.go:91
-#  at gosqldriver/teradatasql.(*teradataConnection).formatDatabaseError ErrorUtil.go:251
-#  at gosqldriver/teradatasql.(*teradataConnection).makeChainedDatabaseError ErrorUtil.go:267
-#  at gosqldriver/teradatasql.(*teradataConnection).processErrorParcel TeradataConnection.go:751
-#  at gosqldriver/teradatasql.(*TeradataRows).processResponseBundle TeradataRows.go:2308
-#  at gosqldriver/teradatasql.(*TeradataRows).executeSQLRequest TeradataRows.go:874
-#  at gosqldriver/teradatasql.newTeradata
+@contextmanager
+def tera_catch():
+    try:
+        yield
+    except (sa_exc.StatementError, sa_exc.OperationalError) as err:
+        cause = err.orig
+        err_code = get_error_code_from_exception(cause)
+        err_desc = get_description_from_exception(cause)
+        statement = err.statement
+        logger.error(
+            f"ERROR: {err_code}: {err_desc}\nstatement = {statement[:100]} ..."
+        )
+        raise
 
 
 @contextmanager
@@ -150,7 +153,7 @@ def translate_error():
 
     try:
         yield
-    except sa_exc.StatementError as err:
+    except (sa_exc.StatementError, sa_exc.OperationalError) as err:
         cause = err.orig
         err_code = get_error_code_from_exception(cause)
         err_desc = get_description_from_exception(cause)
