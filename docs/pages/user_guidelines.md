@@ -4,10 +4,13 @@ Welcome to the **User Guidelines** section for d-bee, the core utility of the d-
 
 Below are the available sections:
 
-- [Who is d-bee?](user_guidelines/who_is_d_bee.md)
-- [Configuration](user_guidelines/configuration.md)
-- [Project Structure](user_guidelines/project_structure.md)
-- [Feature: Project Initialization](user_guidelines/project_init.md)
-- [Feature: Extraction](user_guidelines/extract.md)
-- [Feature: Environment Deployment](user_guidelines/env_deploy.md)
-- [Feature: Package Deployment](user_guidelines/pkg_deploy.md)
+- [Who is d-bee?](./user_guidelines/who_is_d_bee.md)
+- [Configuration](./user_guidelines/configuration.md)
+- [Project Structure](./user_guidelines/project_structure.md)
+- [Feature: Project Initialization](./user_guidelines/project_init.md)
+- [Feature: Extraction](./user_guidelines/extract.md)
+- [Feature: Environment Deployment](./user_guidelines/env_deploy.md)
+- [Feature: Package Deployment](./user_guidelines/pkg_deploy.md)
+- [Feature: Create incremental package based on git history](./user_guidelines/pkg_from_diff.md)
+- [Feature: A better support of using Teradata in Jupyter notebooks](./user_guidelines/jupyter_notebooks.md)
+- 

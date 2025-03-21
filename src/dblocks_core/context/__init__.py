@@ -1,5 +1,6 @@
 import atexit
 import json
+import unicodedata
 from collections.abc import MutableMapping
 from datetime import datetime
 from inspect import stack
@@ -61,6 +62,13 @@ def find_ctx_root(
     # not in a git repo
     logger.debug("failed to find context directory")
     return None
+
+
+def sanitize_string(name: str) -> str:
+    ascii_name = unicodedata.normalize("NFKD", name)
+    ascii_name = ascii_name.encode("ASCII", "ignore").decode("utf8")
+    ascii_name = ascii_name.lower().replace(" ", "-")
+    return ascii_name
 
 
 @define
@@ -192,8 +200,7 @@ class FSContext(Context):
         # all of these attributes are file system related
         self.name = name
         self.directory = directory
-        # TODO: sanitization of file name so that it is safely stored on disk
-        self.sanitized_name = self.name
+        self.sanitized_name = sanitize_string(self.name)
         self.file = self.directory / f"ctx-{self.sanitized_name}.json"
         self.ctx_data = ContextData(name=name)
 
@@ -290,3 +297,18 @@ class FSContext(Context):
         if self.log_self:
             logger.warning("context is not closed, saving context")
         self.save()
+
+
+class JupyterContext(FSContext):
+    def __init__(self, name: str):
+        super().__init__(
+            name=name,
+            directory=Path.cwd(),
+            log_self=False,
+            atexit_handler=False,
+            save_after_each=1,
+        )
+
+    def done(self):
+        super().done()
+        super().atexit_handler()
