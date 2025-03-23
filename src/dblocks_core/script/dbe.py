@@ -384,6 +384,13 @@ def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
     cfg = config.load_config()
 
+    # give me ALL plugins
+    all_plugins = config.plugin_instances(class_=None)
+    for plugin_instance in all_plugins:
+        logger.info(
+            f"- existing plugin: {plugin_instance.module_name}.{plugin_instance.class_name}"
+        )
+
     hello_plugins = config.plugin_instances(plugin_model.PluginHello)
     for plug_instance in hello_plugins:
         logger.info(f"calling: {plug_instance.module_name}.{plug_instance.class_name}")
