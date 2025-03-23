@@ -509,7 +509,7 @@ def walk(
     path_ = Path(path)
 
     # walk
-    for walker in all_walkers:
+    for walker in walkers:
         logger.info(f"before: {walker.module_name}.{walker.class_name}")
         walker_callable: plugin_model.PluginWalker = walker.instance
         walker_callable.before(
