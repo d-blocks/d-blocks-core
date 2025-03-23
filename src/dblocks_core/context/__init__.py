@@ -213,7 +213,7 @@ class FSContext(Context):
     def set_checkpoint(self, checkpoint: str = "", caller_index: int = 2):
         super().set_checkpoint(checkpoint, caller_index=2)
         ln = len(self.ctx_data.checkpoints)
-        if ln % self.save_after_each == 0:
+        if ln % self.save_after_each == 0 and self.log_self:
             logger.debug(f"saving context with length {ln}")
             self.save()
 
