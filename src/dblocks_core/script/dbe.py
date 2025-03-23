@@ -391,6 +391,12 @@ def cfg_check():
         retval = hello_callable.hello()
         logger.info(f"{plug_instance.module_name}.{plug_instance.class_name}: {retval}")
 
+    all_plugins = config.plugin_instances(plugin_model.PluginCfgCheck)
+    for plugin_instance in all_plugins:
+        logger.info(
+            f"- existing plugin: {plugin_instance.module_name}.{plugin_instance.class_name}"
+        )
+
     validator_plugins = config.plugin_instances(plugin_model.PluginCfgCheck)
     for validator in validator_plugins:
         logger.info(f"calling: {validator.module_name}.{validator.class_name}")

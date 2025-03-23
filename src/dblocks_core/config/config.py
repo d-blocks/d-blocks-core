@@ -88,7 +88,7 @@ def plugin_instances(class_) -> list[plugin_model._PluginInstance]:
     """Returns list of plugin instances of specified base class.
 
     Args:
-        class_ (_type_): one of bblocks_core.model.plugin_model classes
+        class_ (_type_): one of bblocks_core.model.plugin_model classes, or None
 
     Returns:
         list[plugin_model._PluginInstance]: list of instantiated plugins of said class
@@ -96,20 +96,22 @@ def plugin_instances(class_) -> list[plugin_model._PluginInstance]:
     logger.trace(class_)
     plugin_modules = load_plugins()
     plugin_instances = []
+
     for plugin_name, pluggable_instances in plugin_modules.items():
         logger.trace(plugin_name)
         for plug_instance in pluggable_instances:
             logger.trace(plug_instance)
-            if not isinstance(plug_instance, class_):
-                logger.trace("skipping the instance")
-                continue
-            plugin_instances.append(
-                plugin_model._PluginInstance(
-                    module_name=plugin_name,
-                    class_name=plug_instance.__class__.__name__,
-                    instance=plug_instance,
+            if class_ is None or isinstance(plug_instance, class_):
+                plugin_instances.append(
+                    plugin_model._PluginInstance(
+                        module_name=plugin_name,
+                        class_name=plug_instance.__class__.__name__,
+                        instance=plug_instance,
+                    )
                 )
-            )
+            else:
+                logger.trace("skipping the instance")
+
     logger.trace(plugin_instances)
     return plugin_instances
 
