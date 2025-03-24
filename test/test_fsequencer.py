@@ -40,6 +40,13 @@ def test_sequencer1():
                 ),
                 files=[
                     fsequencer.DeploymentFile(
+                        default_db=None,
+                        file=Path(
+                            "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/20-step2/x-at-the-end.viw"
+                        ),
+                        file_type=meta_model.VIEW,
+                    ),
+                    fsequencer.DeploymentFile(
                         default_db="db1",
                         file=Path(
                             "/home/jan/d-blocks/d-blocks-core/test/fixtures/fsequencer/db/20-step2/db1/1.tab"
@@ -60,6 +67,7 @@ def test_sequencer1():
 
     assert len(batch.steps) == len(expected_batch.steps)
     assert batch.root_dir == expected_batch.root_dir
+    assert batch == expected_batch
 
     for i, eb in enumerate(expected_batch.steps):
         assert (

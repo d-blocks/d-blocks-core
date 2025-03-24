@@ -84,38 +84,58 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
 
     # rglob files ordered alphabetically
     for step in steps:
-        files = []
-        for f in sorted(step.location.rglob("*")):
-            # skip folders
-            if f.is_dir():
-                continue
+        step.files = []
 
+        # files directly under step are to be executed FIRST
+        _input_dirs = sorted([d for d in step.location.iterdir() if d.is_dir()])
+        _input_files = sorted(
+            [file for file in step.location.iterdir() if file.is_file()]
+        )
+
+        for f in _input_files:
             # one of supported file types
             try:
                 file_type = fsystem.EXT_TO_TYPE[f.suffix]
             except KeyError:
                 logger.warning(f"skipping file with unsupported type ({f.suffix}): {f}")
                 continue
-
-            # for files that are not directly in the step dir,
-            # we assume that the name of the parent is name of the db
-            if f.parent.absolute() == step.location.absolute():
-                db = None
-            else:
-                db = f.parent.name
-
-            # name of the db can tagged be placeholder
-            if tgr is not None and db is not None:
-                db = tgr.expand_statement(db)
-
-            files.append(
+            step.files.append(
                 DeploymentFile(
-                    default_db=db,
+                    default_db=None,  # no default database for these files
                     file=f,
                     file_type=file_type,
                 )
             )
-        step.files = files
+        # files that are in their own directory should be executed later
+        for dabatase_dir in _input_dirs:
+            if not dabatase_dir.is_dir():
+                continue
+            for f in sorted(dabatase_dir.rglob("*")):
+                if f.is_dir():
+                    continue
+                try:
+                    file_type = fsystem.EXT_TO_TYPE[f.suffix]
+                except KeyError:
+                    logger.warning(
+                        f"skipping file with unsupported type ({f.suffix}): {f}"
+                    )
+                    continue
+
+                # for files that are not directly in the step dir,
+                # we assume that the name of the parent is name of the db
+                db = f.parent.name
+
+                # name of the db can tagged be placeholder
+                if tgr is not None and db is not None:
+                    db = tgr.expand_statement(db)
+
+                step.files.append(
+                    DeploymentFile(
+                        default_db=db,
+                        file=f,
+                        file_type=file_type,
+                    )
+                )
 
     steps = [step for step in steps if len(step.files) > 0]
     return DeploymentBatch(root_dir=root_dir, steps=steps)

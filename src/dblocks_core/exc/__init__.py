@@ -6,6 +6,7 @@ from dblocks_core.config.config import logger
 
 class DBlocksError(Exception):
     "Base class for all future errors."
+
     no_stack_trace = False
 
     def __init__(self, message: str | None = None):
@@ -15,31 +16,37 @@ class DBlocksError(Exception):
 
 class DConfigError(DBlocksError):
     "Configuration error."
+
     pass
 
 
 class DOperationsError(DBlocksError):
     "File creation/removal error, and simillar types of problems."
+
     pass
 
 
 class DGitError(DOperationsError):
     "Git related error."
+
     pass
 
 
 class DGitCommandError(DGitError):
     "Git command failed."
+
     pass
 
 
-class DGitNotFound(DOperationsError):
+class DGitNotFound(DGitError):
     "Git related error."
+
     pass
 
 
 class DBError(DBlocksError):
     "Base class for errors on database operations."
+
     pass
 
 
@@ -57,21 +64,29 @@ class DBStatementError(DBError):
 
 class DBCannotConnect(DBError):
     "Can not connect to the database."
+
     pass
 
 
 class DBObjectDoesNotExist(DBError):
     "Object in database does not exist."
+
     pass
 
 
 class DBNoStatsDefined(DBError):
     "No statistics defined for the object."
+
     pass
 
 
 class DParsingError(DBlocksError):
     "Can not parse or tokenize the input."
+
+    pass
+
+
+class DDeployerInvalidBatch(DOperationsError):
     pass
 
 
