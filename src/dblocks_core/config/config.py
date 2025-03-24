@@ -21,7 +21,7 @@ import platformdirs
 from cattrs import transform_error
 from loguru import logger
 
-import dblocks_core.plugin
+import dblocks_plugin
 from dblocks_core import exc
 from dblocks_core.git import git
 from dblocks_core.model import config_model, plugin_model
@@ -60,7 +60,7 @@ def __iter_namespace(ns_pkg):
 
 __PLUGABLE_MODULES = {
     name: importlib.import_module(name)
-    for finder, name, ispkg in __iter_namespace(dblocks_core.plugin)
+    for finder, name, ispkg in __iter_namespace(dblocks_plugin)
 }
 
 __PLUGABLE_MODULES = {
