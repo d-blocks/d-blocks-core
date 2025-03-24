@@ -7,6 +7,7 @@ license = "MIT"
 readme = "README.md"
 packages = [
     { include = "dblocks_core", from = "src" }, 
+    { include = "dblocks_plugin", from = "src" }, 
 ]
 
 classifiers = [
