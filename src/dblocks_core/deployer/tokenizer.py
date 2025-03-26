@@ -1,6 +1,7 @@
 from typing import Generator
 
 from dblocks_core import exc
+from dblocks_core.config.config import logger
 
 SEMICOLON = ";"
 APOSTROPHE = "'"
@@ -17,6 +18,7 @@ def tokenize_statements(
     text: str,
     *,
     separator=SEMICOLON,
+    raise_errors: bool = True,
 ) -> Generator[str, None, None]:
     """
     Tokenizes SQL statements from a text input, handling comments and string
@@ -98,7 +100,10 @@ def tokenize_statements(
                     f"Error at line {line_no}: unterminated comment "
                     "('/*' encountered)"
                 )
-                raise exc.DParsingError(message)
+                if raise_errors:
+                    raise exc.DParsingError(message)
+                else:
+                    logger.error(message)
             in_comment, skip_next_n = True, 1
             continue
 
@@ -109,7 +114,10 @@ def tokenize_statements(
                     f"Error at line {line_no}: termination of comment with no start "
                     "('*/' encountered)"
                 )
-                raise exc.DParsingError(message)
+                if raise_errors:
+                    raise exc.DParsingError(message)
+                else:
+                    logger.error(message)
             in_comment, skip_next_n = False, 1
 
         # start of single line comment
@@ -155,7 +163,10 @@ def tokenize_statements(
                 message = (
                     f"Error at line {line_no}: empty statement ({stmt_count=}, {i=})"
                 )
-                raise exc.DParsingError(message)
+                if raise_errors:
+                    raise exc.DParsingError(message)
+                else:
+                    logger.error(message)
 
             # yield the statement and prep for next iteration
             yield statement
@@ -165,11 +176,17 @@ def tokenize_statements(
     # sanity check
     if in_comment:
         message = f"Error at line {line_no}: unterminated comment (expected to see: */)"
-        raise exc.DParsingError(message)
+        if raise_errors:
+            raise exc.DParsingError(message)
+        else:
+            logger.error(message)
 
     if in_string:
         message = f"Error at line {line_no}: unterminated string (expected to see: ')"
-        raise exc.DParsingError(message)
+        if raise_errors:
+            raise exc.DParsingError(message)
+        else:
+            logger.error(message)
 
     # if - at the end - we got unprocessed characters, yield last statement
     try:
