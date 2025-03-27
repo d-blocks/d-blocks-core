@@ -140,6 +140,12 @@ class FSWriter(AbstractWriter):
         *,
         env_name: str,
     ):
+        """Writes the list of described databases to a JSON file.
+
+        Args:
+            databases (list[meta_model.DescribedDatabase]): List of described databases.
+            env_name (str): Environment name to be used in the filename.
+        """
         data = cattrs.unstructure(databases)
         text = json.dumps(data, indent=4)
         tf = self.target_dir / f"{env_name}-databases.json"
@@ -152,6 +158,13 @@ class FSWriter(AbstractWriter):
         database_tag: str,
         parent_tags_in_scope: list[str] | None = None,
     ):
+        """Writes a described object to a file.
+
+        Args:
+            obj (meta_model.DescribedObject): The described object to be written.
+            database_tag (str): The database tag associated with the object.
+            parent_tags_in_scope (list[str] | None): Optional list of parent tags in scope.
+        """
         # překlad typu objektu na extenzi
         try:
             ext = TYPE_TO_EXT[obj.identified_object.object_type]
@@ -179,6 +192,14 @@ class FSWriter(AbstractWriter):
         self,
         object: meta_model.DescribedObject,
     ) -> list[str]:
+        """Generates a list of DDL statements for the described object.
+
+        Args:
+            object (meta_model.DescribedObject): The described object.
+
+        Returns:
+            list[str]: List of DDL statements.
+        """
         statements = []
         if object.basic_definition:
             statements.append(object.basic_definition)
@@ -212,14 +233,14 @@ class FSWriter(AbstractWriter):
         parent_tags_in_scope: list[str] | None = None,
     ) -> Path:
         """
-        Accepts path which must be relative to target dir, changes it to lowercase,
-        and returns it as part of the target path.
+        Converts a relative path to lowercase and joins it with the target directory.
 
         Args:
-            subdir (Path | str): dir or file
+            subpath (Path | str): The relative path to be standardized.
+            parent_tags_in_scope (list[str] | None): Optional list of parent tags in scope.
 
         Returns:
-            Path: path converted to lowercase and joined with target_dir
+            Path: The standardized path joined with the target directory.
         """
         if isinstance(subpath, str):
             subpath = Path(subpath.lower())

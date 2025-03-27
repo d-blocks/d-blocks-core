@@ -17,7 +17,20 @@ def scan_env(
     filter_creator: str | None = None,
     filter_since_dt: datetime | None = None,
 ) -> Tuple[tagger.Tagger, meta_model.ListedEnv]:
+    """
+    Scans the environment to retrieve metadata about databases and objects.
 
+    Args:
+        env (config_model.EnvironParameters): Environment parameters.
+        ext (AbstractDBI): Database interface for extraction.
+        filter_databases (str | None): Optional filter for database names.
+        filter_names (str | None): Optional filter for object names.
+        filter_creator (str | None): Optional filter for creator names.
+        filter_since_dt (datetime | None): Optional filter for changes since a specific datetime.
+
+    Returns:
+        Tuple[tagger.Tagger, meta_model.ListedEnv]: A tagger instance and the listed environment metadata.
+    """
     # prep db filter
     re_database_filter: re.Pattern | None = None
     if filter_databases:

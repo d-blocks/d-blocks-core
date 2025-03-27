@@ -31,7 +31,24 @@ def run_extraction(
     commit: bool = False,
 ):
     """
-    Run full extraction of the database.
+    Executes a full or incremental extraction of the database.
+
+    Args:
+        ctx (Context): The context for the operation.
+        env (config_model.EnvironParameters): Environment parameters.
+        env_name (str): Name of the environment.
+        ext (AbstractDBI): Database interface for extraction.
+        wrt (AbstractWriter): Writer interface for saving extracted data.
+        repo (git.Repo | None): Git repository instance.
+        filter_since_dt (datetime | None): Optional filter for changes since a specific datetime.
+        filter_databases (str | None): Optional filter for database names.
+        filter_names (str | None): Optional filter for object names.
+        filter_creator (str | None): Optional filter for creator names.
+        log_each (int): Frequency of logging progress.
+        commit (bool): Whether to commit changes to the repository.
+
+    Returns:
+        None
     """
     # prep git
     if env.git_branch is not None:

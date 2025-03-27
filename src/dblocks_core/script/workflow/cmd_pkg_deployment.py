@@ -126,6 +126,15 @@ def cmd_pkg_deploy(
 
 
 def _path_to_directories(path: Path) -> list[str]:
+    """
+    Breaks down a path into its individual directory components.
+
+    Args:
+        path (Path): The path to be split.
+
+    Returns:
+        list[str]: A list of directory names in the path.
+    """
     elements = []
     curr: Path = path
     prev: Path | None = None
@@ -140,6 +149,16 @@ def _path_to_directories(path: Path) -> list[str]:
 
 
 def case_insensitive_search(root: Path, subdir: Path) -> Path | None:
+    """
+    Searches for a subdirectory under a root directory in a case-insensitive manner.
+
+    Args:
+        root (Path): The root directory to search in.
+        subdir (Path): The subdirectory to search for.
+
+    Returns:
+        Path | None: The found subdirectory path or None if not found.
+    """
     wanted = _path_to_directories(subdir)
     wanted = [s.lower() for s in wanted]
     found_dirs = []
