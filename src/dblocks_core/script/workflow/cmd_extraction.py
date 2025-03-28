@@ -3,11 +3,11 @@ from datetime import datetime
 import cattrs
 
 from dblocks_core import exc, tagger
-from dblocks_core.config.config import logger
+from dblocks_core.config.config import logger, plugin_instances
 from dblocks_core.context import Context
 from dblocks_core.dbi import AbstractDBI
 from dblocks_core.git import git
-from dblocks_core.model import config_model, meta_model
+from dblocks_core.model import config_model, meta_model, plugin_model
 from dblocks_core.script.workflow import dbi
 from dblocks_core.writer import AbstractWriter
 
@@ -80,6 +80,11 @@ def run_extraction(
 
         # assume we are in the correct branch
         repo.checkout(env.git_branch, missing_ok=True)
+
+    # prep plugins
+    plugins = plugin_instances(plugin_model.PluginFSWriter)
+    for instance in plugins:
+        logger.info(f"Plugin: {instance.module_name}.{instance.class_name}")
 
     # prep tgt dir
     env.writer.target_dir.mkdir(exist_ok=True, parents=True)
@@ -162,6 +167,7 @@ def run_extraction(
             described_object,
             database_tag=db_to_tag[obj.database_name.upper()],  # type: ignore
             parent_tags_in_scope=db_to_parents[obj.database_name.upper()],
+            plugins_instances=plugins,
         )
         ctx.set_checkpoint(obj_chk_name)
 

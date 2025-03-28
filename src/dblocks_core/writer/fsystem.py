@@ -158,6 +158,7 @@ class FSWriter(AbstractWriter):
         *,
         database_tag: str,
         parent_tags_in_scope: list[str] | None = None,
+        plugin_instances: list[plugin_model.PluginFSWriter] | None = None,
     ):
         """Writes a described object to a file.
 
@@ -182,19 +183,12 @@ class FSWriter(AbstractWriter):
         logger.debug(f"write to: {target_file.as_posix()}")
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # FIXME: enable call of a plugin
-        #    - inputs: file
-        #              object meta_model.DescribedObjec
-        #    - outputs: string - final DDL which will be written back
-
-        # get list of plugins
-        all_writer_plugins = config.plugin_instances(plugin_model.PluginWalker)
-
         # get the DDL script
         ddl_script = "\n".join(self._get_statements(obj))
 
         # call plugins before
-        for plugin_instance in all_writer_plugins:
+        callables = [] if plugin_instances is None else plugin_instances
+        for plugin_instance in callables:
             logger.debug(
                 f"call plugin before write: {plugin_instance.module_name}.{plugin_instance.class_name}"
             )
@@ -214,7 +208,7 @@ class FSWriter(AbstractWriter):
         )
 
         # call plugins after
-        for plugin_instance in all_writer_plugins:
+        for plugin_instance in callables:
             logger.debug(
                 f"call plugin after write: {plugin_instance.module_name}.{plugin_instance.class_name}"
             )
