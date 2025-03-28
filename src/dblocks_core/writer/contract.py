@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Iterable
 
-from dblocks_core.model import meta_model
+from dblocks_core.model import meta_model, plugin_model
 
 
 class AbstractWriter(ABC):
@@ -42,6 +42,7 @@ class AbstractWriter(ABC):
         *,
         database_tag: str,
         parent_tags_in_scope: list[str] | None = None,
+        plugins_instances: list[plugin_model.PluginFSWriter] | None = None,
     ):
         """Stores object in the repository.
 

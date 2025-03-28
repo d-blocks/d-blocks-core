@@ -490,6 +490,7 @@ def walk(
     """Executes a plugin on top of a file or directory."""
     cfg_dict = config.load_config_dict()
     cfg = config.load_config()
+    all_plugins = config.plugin_instances()
     all_walkers = config.plugin_instances(plugin_model.PluginWalker)
     if len(all_walkers) == 0:
         logger.error(
