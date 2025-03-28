@@ -167,7 +167,7 @@ def run_extraction(
             described_object,
             database_tag=db_to_tag[obj.database_name.upper()],  # type: ignore
             parent_tags_in_scope=db_to_parents[obj.database_name.upper()],
-            plugins_instances=plugins,
+            plugin_instances=plugins,
         )
         ctx.set_checkpoint(obj_chk_name)
 
