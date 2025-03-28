@@ -4,8 +4,9 @@ from typing import Iterable
 
 import cattrs
 
+from dblocks_core.config import config
 from dblocks_core.config.config import logger
-from dblocks_core.model import config_model, meta_model
+from dblocks_core.model import config_model, meta_model, plugin_model
 from dblocks_core.writer.contract import AbstractWriter
 
 TABLE_SUFFIX = ".tab"
@@ -181,12 +182,43 @@ class FSWriter(AbstractWriter):
         logger.debug(f"write to: {target_file.as_posix()}")
         target_dir.mkdir(parents=True, exist_ok=True)
 
+        # FIXME: enable call of a plugin
+        #    - inputs: file
+        #              object meta_model.DescribedObjec
+        #    - outputs: string - final DDL which will be written back
+
+        # get list of plugins
+        all_writer_plugins = config.plugin_instances(plugin_model.PluginWalker)
+
+        # get the DDL script
+        ddl_script = "\n".join(self._get_statements(obj))
+
+        # call plugins before
+        for plugin_instance in all_writer_plugins:
+            logger.debug(
+                f"call plugin before write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+            )
+            new_ddl_script = plugin_instance.instance.before(
+                target_file,
+                obj,
+                ddl_script,
+            )
+            if new_ddl_script is not None:
+                ddl_script = new_ddl_script
+
         # ddl skript
         target_file.write_text(
-            "\n".join(self._get_statements(obj)),
+            ddl_script,
             encoding=self.encoding,
             errors=self.errors,
         )
+
+        # call plugins after
+        for plugin_instance in all_writer_plugins:
+            logger.debug(
+                f"call plugin after write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+            )
+            plugin_instance.instance.after(target_file, obj)
 
     def _get_statements(
         self,
