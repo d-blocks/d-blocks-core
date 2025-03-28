@@ -4,8 +4,9 @@ from typing import Iterable
 
 import cattrs
 
+from dblocks_core.config import config
 from dblocks_core.config.config import logger
-from dblocks_core.model import config_model, meta_model
+from dblocks_core.model import config_model, meta_model, plugin_model
 from dblocks_core.writer.contract import AbstractWriter
 
 TABLE_SUFFIX = ".tab"
@@ -140,6 +141,12 @@ class FSWriter(AbstractWriter):
         *,
         env_name: str,
     ):
+        """Writes the list of described databases to a JSON file.
+
+        Args:
+            databases (list[meta_model.DescribedDatabase]): List of described databases.
+            env_name (str): Environment name to be used in the filename.
+        """
         data = cattrs.unstructure(databases)
         text = json.dumps(data, indent=4)
         tf = self.target_dir / f"{env_name}-databases.json"
@@ -152,6 +159,13 @@ class FSWriter(AbstractWriter):
         database_tag: str,
         parent_tags_in_scope: list[str] | None = None,
     ):
+        """Writes a described object to a file.
+
+        Args:
+            obj (meta_model.DescribedObject): The described object to be written.
+            database_tag (str): The database tag associated with the object.
+            parent_tags_in_scope (list[str] | None): Optional list of parent tags in scope.
+        """
         # překlad typu objektu na extenzi
         try:
             ext = TYPE_TO_EXT[obj.identified_object.object_type]
@@ -168,17 +182,56 @@ class FSWriter(AbstractWriter):
         logger.debug(f"write to: {target_file.as_posix()}")
         target_dir.mkdir(parents=True, exist_ok=True)
 
+        # FIXME: enable call of a plugin
+        #    - inputs: file
+        #              object meta_model.DescribedObjec
+        #    - outputs: string - final DDL which will be written back
+
+        # get list of plugins
+        all_writer_plugins = config.plugin_instances(plugin_model.PluginWalker)
+
+        # get the DDL script
+        ddl_script = "\n".join(self._get_statements(obj))
+
+        # call plugins before
+        for plugin_instance in all_writer_plugins:
+            logger.debug(
+                f"call plugin before write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+            )
+            new_ddl_script = plugin_instance.instance.before(
+                target_file,
+                obj,
+                ddl_script,
+            )
+            if new_ddl_script is not None:
+                ddl_script = new_ddl_script
+
         # ddl skript
         target_file.write_text(
-            "\n".join(self._get_statements(obj)),
+            ddl_script,
             encoding=self.encoding,
             errors=self.errors,
         )
+
+        # call plugins after
+        for plugin_instance in all_writer_plugins:
+            logger.debug(
+                f"call plugin after write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+            )
+            plugin_instance.instance.after(target_file, obj)
 
     def _get_statements(
         self,
         object: meta_model.DescribedObject,
     ) -> list[str]:
+        """Generates a list of DDL statements for the described object.
+
+        Args:
+            object (meta_model.DescribedObject): The described object.
+
+        Returns:
+            list[str]: List of DDL statements.
+        """
         statements = []
         if object.basic_definition:
             statements.append(object.basic_definition)
@@ -212,14 +265,14 @@ class FSWriter(AbstractWriter):
         parent_tags_in_scope: list[str] | None = None,
     ) -> Path:
         """
-        Accepts path which must be relative to target dir, changes it to lowercase,
-        and returns it as part of the target path.
+        Converts a relative path to lowercase and joins it with the target directory.
 
         Args:
-            subdir (Path | str): dir or file
+            subpath (Path | str): The relative path to be standardized.
+            parent_tags_in_scope (list[str] | None): Optional list of parent tags in scope.
 
         Returns:
-            Path: path converted to lowercase and joined with target_dir
+            Path: The standardized path joined with the target directory.
         """
         if isinstance(subpath, str):
             subpath = Path(subpath.lower())

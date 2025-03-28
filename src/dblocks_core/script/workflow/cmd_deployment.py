@@ -160,6 +160,22 @@ def deploy_queue(
     failures: dict[str, meta_model.DeploymentFailure],
     if_exists: str | None,
 ) -> int:
+    """
+    Deploys a queue of files to the database.
+
+    Args:
+        files (Iterable[Path]): List of files to deploy.
+        ctx (Context): Context for tracking deployment progress.
+        tgr (tagger.Tagger): Tagger for expanding statements.
+        ext (AbstractDBI): Database interface for deployment.
+        log_each (int): Frequency of logging progress.
+        total_queue_length (int): Total number of files in the queue.
+        failures (dict[str, meta_model.DeploymentFailure]): Dictionary to track failed deployments.
+        if_exists (str | None): Conflict resolution strategy.
+
+    Returns:
+        int: Number of successfully deployed files.
+    """
     deployed_cnt = 0
 
     for i, file in enumerate(files):
