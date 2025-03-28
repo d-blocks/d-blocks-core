@@ -48,6 +48,17 @@ ENV_PLACEHOLDER = "{{env}}"
 # reasoning: used by tagger
 @define
 class ColumnDescription:
+    """
+    Represents a description of a database column.
+
+    Attributes:
+        column_name (str): The name of the column.
+        column_comment (str | None): The comment associated with the column.
+        ddl_statement (str | None): The DDL statement for the column.
+        data_type (str | None): The data type of the column.
+        is_column_description (bool): Indicates if this is a column description.
+    """
+
     column_name: str
     column_comment: str | None = field(default=None)
     ddl_statement: str | None = field(default=None)
@@ -59,6 +70,14 @@ class ColumnDescription:
 # reasoning: used by tagger
 @define
 class TableStatistic:
+    """
+    Represents statistics for a database table.
+
+    Attributes:
+        ddl_statement (str): The DDL statement for the table statistics.
+        is_table_stats (bool): Indicates if this is a table statistic.
+    """
+
     ddl_statement: str
     is_table_stats: bool = field(default=True)
 
@@ -145,6 +164,15 @@ class DescribedDatabase:
 
 @define
 class DeploymentFailure:
+    """
+    Represents a failure during deployment.
+
+    Attributes:
+        path (str | None): The path where the failure occurred.
+        statement (str | None): The SQL statement that caused the failure.
+        exc_message (str | None): The exception message associated with the failure.
+    """
+
     path: str | None = field(default=None)
     statement: str | None = field(default=None)
     exc_message: str | None = field(default=None)
@@ -152,6 +180,15 @@ class DeploymentFailure:
 
 @define
 class ListedEnv:
+    """
+    Represents a list of environments and their associated databases and objects.
+
+    Attributes:
+        all_databases (list[DescribedDatabase]): All databases in the environment.
+        dbs_in_scope (list[DescribedDatabase]): Databases within the scope of the environment.
+        all_objects (list[IdentifiedObject]): All objects in the environment.
+    """
+
     all_databases: list[DescribedDatabase]
     dbs_in_scope: list[DescribedDatabase]
     all_objects: list[IdentifiedObject]

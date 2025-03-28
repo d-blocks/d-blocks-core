@@ -65,6 +65,16 @@ def find_ctx_root(
 
 
 def sanitize_string(name: str) -> str:
+    """
+    Sanitizes a string by normalizing it to ASCII, converting to lowercase,
+    and replacing spaces with hyphens.
+
+    Args:
+        name (str): The string to sanitize.
+
+    Returns:
+        str: The sanitized string.
+    """
     ascii_name = unicodedata.normalize("NFKD", name)
     ascii_name = ascii_name.encode("ASCII", "ignore").decode("utf8")
     ascii_name = ascii_name.lower().replace(" ", "-")
@@ -105,6 +115,17 @@ class Context(MutableMapping):
         finished_steps: int,
         eta_since: datetime,
     ) -> datetime:
+        """
+        Estimates the time of completion based on elapsed time and progress.
+
+        Args:
+            total_steps (int): The total number of steps.
+            finished_steps (int): The number of completed steps.
+            eta_since (datetime): The start time for the estimation.
+
+        Returns:
+            datetime: The estimated time of completion.
+        """
         _now = datetime.now()
         _elapsed = _now - eta_since
         _time_per_step = _elapsed / finished_steps
@@ -113,12 +134,28 @@ class Context(MutableMapping):
         return _eta
 
     def done(self):
+        """
+        Marks the context as completed.
+        """
         self.ctx_data.is_done = True
 
     def is_in_progress(self) -> bool:
+        """
+        Checks if the context is in progress.
+
+        Returns:
+            bool: True if the context has checkpoints, False otherwise.
+        """
         return len(self.ctx_data.checkpoints) > 0
 
     def set_checkpoint(self, checkpoint: str = "", caller_index: int = 1):
+        """
+        Sets a checkpoint in the context.
+
+        Args:
+            checkpoint (str, optional): The checkpoint name. Defaults to "".
+            caller_index (int, optional): The stack index of the caller. Defaults to 1.
+        """
         if checkpoint:
             checkpoint = f"->{checkpoint}"
 
@@ -130,6 +167,16 @@ class Context(MutableMapping):
         self.ctx_data.checkpoints[_checkpoint] = True
 
     def get_checkpoint(self, checkpoint: str, caller_index: int = 1) -> bool:
+        """
+        Retrieves the status of a checkpoint.
+
+        Args:
+            checkpoint (str): The checkpoint name.
+            caller_index (int, optional): The stack index of the caller. Defaults to 1.
+
+        Returns:
+            bool: True if the checkpoint exists, False otherwise.
+        """
         if checkpoint:
             checkpoint = f"->{checkpoint}"
 

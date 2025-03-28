@@ -23,6 +23,17 @@ class SecretStr(str):
 
 
 def _assert_not_empty_string(self, attribute, value):
+    """
+    Validates that the value is a non-empty string without whitespace.
+
+    Args:
+        self: The instance of the class.
+        attribute: The attribute being validated.
+        value: The value to validate.
+
+    Raises:
+        ValueError: If the value is not a non-empty string or contains whitespace.
+    """
     if not isinstance(value, str):
         err = ValueError(f"string expected, got: {str(type(value))}")
         logger.error(err)
@@ -39,6 +50,17 @@ def _assert_not_empty_string(self, attribute, value):
 
 
 def _assert_lcase_keys(self, attribute, value):
+    """
+    Validates that all keys in the dictionary are lowercase strings.
+
+    Args:
+        self: The instance of the class.
+        attribute: The attribute being validated.
+        value: The dictionary to validate.
+
+    Raises:
+        ValueError: If any key is not a lowercase string.
+    """
     if not isinstance(value, dict):
         err = ValueError(f"expected a dict, got: {str(type(value))}")
         logger.error(err)
@@ -54,6 +76,17 @@ def _assert_lcase_keys(self, attribute, value):
 
 
 def _assert_list_of_strings(self, attribute, value):
+    """
+    Validates that the value is a list of strings.
+
+    Args:
+        self: The instance of the class.
+        attribute: The attribute being validated.
+        value: The list to validate.
+
+    Raises:
+        ValueError: If the value is not a list of strings.
+    """
     if not isinstance(value, list):
         err = ValueError(f"expected list[str], got: {str(type(value))}")
         logger.error(err)
@@ -69,6 +102,17 @@ def _assert_list_of_strings(self, attribute, value):
 
 
 def _assert_dict_of_strings(self, attribute, value):
+    """
+    Validates that the value is a dictionary with string keys and values.
+
+    Args:
+        self: The instance of the class.
+        attribute: The attribute being validated.
+        value: The dictionary to validate.
+
+    Raises:
+        ValueError: If the value is not a dictionary with string keys and values.
+    """
     if not isinstance(value, dict):
         err = ValueError(f"expected dict[str,str], got: {str(type(value))}")
         logger.error(err)
