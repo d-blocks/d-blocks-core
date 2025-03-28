@@ -92,7 +92,7 @@ class PluginFSWriter(ABC):
         obj: meta_model.DescribedObject,
         ddl: str,
         **kwargs,
-    ) -> str:
+    ) -> str | None:
         """
         This function is executed before the file is written do disk (and returns the DDL script).
         The function is expected to return back either:
