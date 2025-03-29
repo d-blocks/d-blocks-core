@@ -118,6 +118,16 @@ def ignore_errors(err_list: str | list[str | int]):
 
 @contextmanager
 def tera_catch():
+    """
+    A context manager to catch and log Teradata SQL exceptions.
+
+    Yields:
+        None: Executes the block within the context, logging exceptions if they occur.
+
+    Behavior:
+    - Catches `sa_exc.StatementError` and `sa_exc.OperationalError` exceptions.
+    - Logs the error code, description, and statement that caused the exception.
+    """
     try:
         yield
     except (sa_exc.StatementError, sa_exc.OperationalError) as err:
@@ -265,6 +275,17 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def deploy_statements(self, statements: list[str]):
+        """
+        Deploys a list of SQL statements to the Teradata database.
+
+        Args:
+            statements (list[str]): A list of SQL statements to execute.
+
+        Behavior:
+        - Connects to the database engine.
+        - Executes each SQL statement directly using `exec_driver_sql`.
+        - Logs the SQL statement at the custom log level.
+        """
         with self.engine.connect() as con:
             for sql in statements:
                 # stmt = sa.text(sql)
@@ -343,6 +364,17 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def delete_database(self, database_name: str):
+        """
+        Deletes a database from the Teradata system.
+
+        Args:
+            database_name (str): The name of the database to delete.
+
+        Behavior:
+        - Constructs a SQL statement to delete the database.
+        - Executes the SQL statement using the database engine.
+        - Logs the SQL statement at the custom log level.
+        """
         sql = f"""delete database "{database_name}";"""
         stmt = sa.text(sql)
         with self.engine.connect() as con:
@@ -357,7 +389,22 @@ class TeraDBI(contract.AbstractDBI):
         *,
         ignore_errors: bool = False,
     ):
-        """Renames the object."""
+        """
+        Renames a database object.
+
+        Args:
+            obj (meta_model.IdentifiedObject): The object to rename.
+            new_name (str): The new name for the object.
+            ignore_errors (bool, optional): Whether to ignore errors during renaming.
+                Defaults to False.
+
+        Behavior:
+        - Constructs a SQL statement to rename the object.
+        - Executes the SQL statement using the database engine.
+        - Logs the SQL statement at the custom log level.
+        - If `ignore_errors` is True, logs a warning instead of raising an exception
+          on error.
+        """
         object_type = obj.object_type
         sql = (
             f"""RENAME {object_type} "{obj.database_name}"."{obj.object_name}" """
@@ -380,6 +427,21 @@ class TeraDBI(contract.AbstractDBI):
         *,
         ignore_errors: bool = True,
     ):
+        """
+        Drops a database object.
+
+        Args:
+            obj (meta_model.IdentifiedObject): The object to drop.
+            ignore_errors (bool, optional): Whether to ignore errors during dropping.
+                Defaults to True.
+
+        Behavior:
+        - Constructs a SQL statement to drop the object.
+        - Executes the SQL statement using the database engine.
+        - Logs the SQL statement at the custom log level.
+        - If `ignore_errors` is True, logs a warning instead of raising an exception
+          on error.
+        """
         object_type = obj.object_type
         sql = f"""DROP {object_type} "{obj.database_name}"."{obj.object_name}";"""
         stmt = sa.text(sql)
@@ -399,6 +461,23 @@ class TeraDBI(contract.AbstractDBI):
         database_name: str,
         object_name: str,
     ) -> meta_model.IdentifiedObject | None:
+        """
+        Retrieves an identified database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_name (str): The name of the object to retrieve.
+
+        Returns:
+            meta_model.IdentifiedObject | None: The identified object, or None if not
+                found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the object details from `dbc.tablesV`.
+        - Executes the query using the database engine.
+        - Maps the query result to a `meta_model.IdentifiedObject`.
+        - Returns the identified object, or None if not found.
+        """
         sql = """
         select
             databaseName as database_name,
@@ -444,6 +523,23 @@ class TeraDBI(contract.AbstractDBI):
         *,
         limit_to_type: str | None = None,
     ) -> list[meta_model.IdentifiedObject]:
+        """
+        Retrieves a list of database objects.
+
+        Args:
+            database_name (str): The name of the database containing the objects.
+            limit_to_type (str, optional): The type of objects to limit the query to.
+                Defaults to None.
+
+        Returns:
+            list[meta_model.IdentifiedObject]: A list of identified objects.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the object details from `dbc.tablesV`.
+        - Limits the query to specific object types if `limit_to_type` is provided.
+        - Executes the query using the database engine.
+        - Maps the query result to a list of `meta_model.IdentifiedObject`.
+        """
         # get the scope
         if limit_to_type is None:
             scope = ", ".join([f"'{kind}'" for kind in _TABLEKIND_TO_TYPE.keys()])
@@ -504,6 +600,22 @@ class TeraDBI(contract.AbstractDBI):
         object_name: str,
         object_type: str,
     ) -> str:
+        """
+        Retrieves the DDL statement for a database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_name (str): The name of the object to retrieve the DDL for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            str: The DDL statement for the object.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the DDL statement using `SHOW`.
+        - Executes the query using the database engine.
+        - Returns the DDL statement.
+        """
         with self.engine.connect() as con:
             return self._get_object_ddl(con, database_name, object_name, object_type)
 
@@ -514,6 +626,24 @@ class TeraDBI(contract.AbstractDBI):
         object_name: str,
         object_type: str = "table",
     ) -> str:
+        """
+        Retrieves the DDL statement for a database object.
+
+        Args:
+            con (sa.Connection): The database connection.
+            database_name (str): The name of the database containing the object.
+            object_name (str): The name of the object to retrieve the DDL for.
+            object_type (str, optional): The type of the object (e.g., "table").
+                Defaults to "table".
+
+        Returns:
+            str: The DDL statement for the object.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the DDL statement using `SHOW`.
+        - Executes the query using the database connection.
+        - Returns the DDL statement.
+        """
         sql = f"""show {object_type} "{database_name}"."{object_name}";"""
         logger.debug(sql)
         stmt = sa.text(sql)
@@ -531,6 +661,23 @@ class TeraDBI(contract.AbstractDBI):
         *,
         object_type: str,
     ) -> str | None:
+        """
+        Retrieves the comment for a database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_identification (str): The name of the object to retrieve the
+                comment for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            str | None: The comment for the object, or None if no comment is found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the comment from `dbc.tablesV`.
+        - Executes the query using the database engine.
+        - Returns the comment, or None if no comment is found.
+        """
         # TODO: předělat tak, aby výjimka byla pro sloupec. rozdvojka tablesV a columnsV.
         if object_type in _CAN_HAVE_COMMENT:
             return self._get_coment_from_tables_v(
@@ -549,6 +696,23 @@ class TeraDBI(contract.AbstractDBI):
         *,
         object_type: str,
     ) -> meta_model.ObjectDetails:
+        """
+        Retrieves additional details for a database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_identification (str): The name of the object to retrieve details
+                for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            meta_model.ObjectDetails: A list of additional details for the object.
+
+        Behavior:
+        - Retrieves column comments using `_column_comments`.
+        - Retrieves statistics using `_show_stats`.
+        - Combines the retrieved details into a `meta_model.ObjectDetails` list.
+        """
         return [
             *(
                 self._column_comments(
@@ -573,6 +737,23 @@ class TeraDBI(contract.AbstractDBI):
         *,
         object_type: str,
     ) -> meta_model.ObjectDetails:
+        """
+        Retrieves column comments for a database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_identification (str): The name of the object to retrieve column
+                comments for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            meta_model.ObjectDetails: A list of column comments for the object.
+
+        Behavior:
+        - Constructs a SQL query to retrieve column comments from `dbc.columnsV`.
+        - Executes the query using the database engine.
+        - Maps the query result to a list of `meta_model.ColumnDescription`.
+        """
         if object_type not in _CAN_HAVE_COLUMNS:
             return []
         sql = """
@@ -616,6 +797,24 @@ class TeraDBI(contract.AbstractDBI):
         *,
         object_type: str,
     ) -> meta_model.ObjectDetails:
+        """
+        Retrieves statistics for a database object.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            object_identification (str): The name of the object to retrieve statistics
+                for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            meta_model.ObjectDetails: A list of statistics for the object.
+
+        Behavior:
+        - Constructs a SQL query to retrieve statistics using `SHOW STATS`.
+        - Executes the query using the database engine.
+        - Maps the query result to a list of `meta_model.TableStatistic`.
+        - Handles specific exceptions silently or logs them without crashing.
+        """
         if object_type != meta_model.TABLE:
             return []
 
@@ -659,6 +858,22 @@ class TeraDBI(contract.AbstractDBI):
         table_name: str,
         object_type: str,
     ) -> str | None:
+        """
+        Retrieves the comment for a database object from `dbc.tablesV`.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+            table_name (str): The name of the object to retrieve the comment for.
+            object_type (str): The type of the object (e.g., "table").
+
+        Returns:
+            str | None: The comment for the object, or None if no comment is found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the comment from `dbc.tablesV`.
+        - Executes the query using the database engine.
+        - Returns the comment, or None if no comment is found.
+        """
         sql = """
             select commentString as comment_string
             from dbc.tablesV
@@ -685,6 +900,17 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def get_databases(self) -> list[meta_model.DescribedDatabase]:
+        """
+        Retrieves a list of databases from the Teradata system.
+
+        Returns:
+            list[meta_model.DescribedDatabase]: A list of described databases.
+
+        Behavior:
+        - Constructs a SQL query to retrieve database details from `DBC.databasesV`.
+        - Executes the query using the database engine.
+        - Maps the query result to a list of `meta_model.DescribedDatabase`.
+        """
         sql = """
             SELECT
                 databaseName AS database_name,
@@ -720,17 +946,44 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def test_connection(self):
+        """
+        Tests the connection to the Teradata database.
+
+        Behavior:
+        - Logs the start of the connection test.
+        - Connects to the database engine.
+        - Logs the success of the connection test.
+        """
         logger.info("testing connection")
         with self.engine.connect():
             logger.info("success")
 
     @translate_error()
     def dispose(self):
+        """
+        Disposes of the SQL engine.
+
+        Behavior:
+        - Logs the disposal of the SQL engine.
+        - Disposes of the database engine.
+        """
         logger.info("dispose of the sql engine")
         self.engine.dispose()
 
     @translate_error()
     def change_database(self, database_name):
+        """
+        Changes the current database.
+
+        Args:
+            database_name (str): The name of the database to change to.
+
+        Behavior:
+        - Constructs a SQL statement to change the database.
+        - Executes the SQL statement using the database engine.
+        - Logs the SQL statement at the custom log level.
+        - Logs a warning if the database name is invalid.
+        """
         if not database_name:
             logger.warning(f"can not change database: {database_name=}")
             return

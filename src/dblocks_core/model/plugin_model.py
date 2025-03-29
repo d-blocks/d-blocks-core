@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,6 +19,7 @@ class PluginHello(ABC):
     This is an example plugin, that is executed only from command dbe cfg-check.
     """
 
+    @abstractmethod
     def hello() -> str:
         """
         The function must return a string, which will be written to the log.
@@ -38,10 +39,10 @@ class PluginCfgCheck(ABC):
 
     """
 
+    @abstractmethod
     def check_config(cfg: config_model.Config):
         """
         Check the config, raise dblocks_core.exc.DConfigError for invalid config.
-
 
         Args:
             cfg (config_model.Config): the config in question
@@ -53,6 +54,7 @@ class PluginWalker(ABC):
     This plugin walks through all files in a specified directory.
     """
 
+    @abstractmethod
     def before(
         self,
         path: Path,
@@ -60,8 +62,17 @@ class PluginWalker(ABC):
         cfg: config_model.Config,
         **kwargs,
     ):
-        """This function is executed before the walk starts."""
+        """
+        This function is executed before the walk starts.
 
+        Args:
+            path (Path): The directory path to start walking.
+            environment (str | None): The environment name, if any.
+            cfg (config_model.Config): The configuration object.
+            **kwargs: Additional arguments.
+        """
+
+    @abstractmethod
     def walker(
         self,
         path: Path,
@@ -69,8 +80,17 @@ class PluginWalker(ABC):
         cfg: config_model.Config,
         **kwargs,
     ):
-        """This function is executed for each file we walk through."""
+        """
+        This function is executed for each file we walk through.
 
+        Args:
+            path (Path): The file path being walked.
+            environment (str | None): The environment name, if any.
+            cfg (config_model.Config): The configuration object.
+            **kwargs: Additional arguments.
+        """
+
+    @abstractmethod
     def after(
         self,
         path: Path,
@@ -78,7 +98,15 @@ class PluginWalker(ABC):
         cfg: config_model.Config,
         **kwargs,
     ):
-        """TWhis function is executed at the end."""
+        """
+        This function is executed at the end of the walk.
+
+        Args:
+            path (Path): The directory path where the walk ended.
+            environment (str | None): The environment name, if any.
+            cfg (config_model.Config): The configuration object.
+            **kwargs: Additional arguments.
+        """
 
 
 class PluginFSWriter(ABC):
@@ -86,6 +114,7 @@ class PluginFSWriter(ABC):
     This plugin is called when debbie attempts to write DDL to a file system.
     """
 
+    @abstractmethod
     def before(
         self,
         path: Path,
@@ -94,18 +123,32 @@ class PluginFSWriter(ABC):
         **kwargs,
     ) -> str | None:
         """
-        This function is executed before the file is written do disk (and returns the DDL script).
-        The function is expected to return back either:
-            - the DDL script (string), or
-            - None, if the DDL script should not be changed.
+        This function is executed before the file is written to disk (and returns the DDL script).
+
+        Args:
+            path (Path): The file path where the DDL will be written.
+            obj (meta_model.DescribedObject): The described object being written.
+            ddl (str): The DDL script to be written.
+            **kwargs: Additional arguments.
+
+        Returns:
+            str | None: The modified DDL script or None if no changes are needed.
         """
         pass
 
+    @abstractmethod
     def after(
         self,
         path: Path,
         obj: meta_model.DescribedObject,
         **kwargs,
     ):
-        """This function is executed after the file is written do disk."""
+        """
+        This function is executed after the file is written to disk.
+
+        Args:
+            path (Path): The file path where the DDL was written.
+            obj (meta_model.DescribedObject): The described object that was written.
+            **kwargs: Additional arguments.
+        """
         pass

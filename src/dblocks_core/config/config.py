@@ -55,6 +55,15 @@ EXPECTED_CONFIG_VERSION = "1.0.0"
 
 
 def __iter_namespace(ns_pkg):
+    """
+    Iterate over all modules in a given namespace package.
+
+    Args:
+        ns_pkg (ModuleType): The namespace package to iterate over.
+
+    Returns:
+        Iterator: An iterator over the modules in the namespace package.
+    """
     return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
 
@@ -303,6 +312,15 @@ def load_config(
 
 
 def filter_dbi_interaction(record):
+    """
+    Filter log records to include only those with the 'TERADATA' log level.
+
+    Args:
+        record (dict): The log record to filter.
+
+    Returns:
+        bool: True if the record matches the 'TERADATA' log level, False otherwise.
+    """
     return record["level"].no == logger.level("TERADATA").no
 
 
@@ -319,7 +337,12 @@ def add_logger_sink(
 
 
 def remove_logger_sink(id_: int):
-    "Removes a logger sink."
+    """
+    Remove a logger sink by its ID.
+
+    Args:
+        id_ (int): The ID of the logger sink to remove.
+    """
     logger.remove(id_)
 
 
@@ -500,15 +523,38 @@ def deep_merge_dicts(
 
 
 def _ensure_path(f: str | pathlib.Path) -> pathlib.Path:
+    """
+    Ensure the input is converted to a pathlib.Path object.
+
+    Args:
+        f (str | pathlib.Path): The input file path.
+
+    Returns:
+        pathlib.Path: The converted pathlib.Path object.
+
+    Raises:
+        TypeError: If the input is neither a string nor a pathlib.Path.
+    """
     if isinstance(f, pathlib.Path):
         return f
     if isinstance(f, str):
         return pathlib.Path(f)
-    raise TypeError(f"parameter is neiter str nor pathlib.Path: {type(f)}")
+    raise TypeError(f"parameter is neither str nor pathlib.Path: {type(f)}")
 
 
 class _LoggingInterceptHandler(logging.Handler):
+    """
+    A logging handler that intercepts standard library logging calls
+    and redirects them to Loguru.
+    """
+
     def emit(self, record: logging.LogRecord) -> None:
+        """
+        Emit a log record to Loguru.
+
+        Args:
+            record (logging.LogRecord): The log record to emit.
+        """
         # Get corresponding Loguru level if it exists.
         level: str | int
         try:
