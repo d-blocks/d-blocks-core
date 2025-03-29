@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,6 +19,7 @@ class PluginHello(ABC):
     This is an example plugin, that is executed only from command dbe cfg-check.
     """
 
+    @abstractmethod
     def hello() -> str:
         """
         The function must return a string, which will be written to the log.
@@ -38,6 +39,7 @@ class PluginCfgCheck(ABC):
 
     """
 
+    @abstractmethod
     def check_config(cfg: config_model.Config):
         """
         Check the config, raise dblocks_core.exc.DConfigError for invalid config.
@@ -52,6 +54,7 @@ class PluginWalker(ABC):
     This plugin walks through all files in a specified directory.
     """
 
+    @abstractmethod
     def before(
         self,
         path: Path,
@@ -69,6 +72,7 @@ class PluginWalker(ABC):
             **kwargs: Additional arguments.
         """
 
+    @abstractmethod
     def walker(
         self,
         path: Path,
@@ -86,6 +90,7 @@ class PluginWalker(ABC):
             **kwargs: Additional arguments.
         """
 
+    @abstractmethod
     def after(
         self,
         path: Path,
@@ -109,6 +114,7 @@ class PluginFSWriter(ABC):
     This plugin is called when debbie attempts to write DDL to a file system.
     """
 
+    @abstractmethod
     def before(
         self,
         path: Path,
@@ -130,6 +136,7 @@ class PluginFSWriter(ABC):
         """
         pass
 
+    @abstractmethod
     def after(
         self,
         path: Path,
