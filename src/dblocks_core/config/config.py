@@ -77,7 +77,7 @@ __PLUGABLE_MODULES = {
 }
 
 
-def load_plugins() -> dict[str, list[Callable]]:
+def load_plugins(cfg: config_model.Config) -> dict[str, list[Callable]]:
     """Returns dict of plugins under dblocks_core.plugin
 
     Returns:
@@ -90,10 +90,15 @@ def load_plugins() -> dict[str, list[Callable]]:
             continue
         plugins[name] = getattr(plugin_module, "PLUGINS")
 
+    for plug in plugins:
+        plug.dbe_init(cfg)
     return plugins
 
 
-def plugin_instances(class_) -> list[plugin_model._PluginInstance]:
+def plugin_instances(
+    cfg: config_model.Config,
+    class_,
+) -> list[plugin_model._PluginInstance]:
     """Returns list of plugin instances of specified base class.
 
     Args:
@@ -103,7 +108,7 @@ def plugin_instances(class_) -> list[plugin_model._PluginInstance]:
         list[plugin_model._PluginInstance]: list of instantiated plugins of said class
     """
     logger.trace(class_)
-    plugin_modules = load_plugins()
+    plugin_modules = load_plugins(cfg)
     plugin_instances = []
 
     for plugin_name, pluggable_instances in plugin_modules.items():
@@ -231,7 +236,7 @@ def load_config(
     to the expected structure of the Config model.
     """
     # config from files
-    config_dict = load_config_dict(
+    cfg_dict = load_config_dict(
         encoding=encoding,
         env_name_prefix=env_name_prefix,
         environ=environ,
@@ -241,7 +246,7 @@ def load_config(
     # check version
     _config_version = ""
     try:
-        _config_version = config_dict["config_version"]
+        _config_version = cfg_dict["config_version"]
     except KeyError:
         pass
 
@@ -254,7 +259,7 @@ def load_config(
         raise exc.DConfigError(message)
 
     try:
-        config = cattrs.structure(config_dict, config_model.Config)
+        cfg = cattrs.structure(cfg_dict, config_model.Config)
     except Exception as err:
         # try:
         #     _e = config_dict["extractor"]
@@ -266,7 +271,7 @@ def load_config(
         # logger.error(f"Error when processing config:\n{pprint.pformat(config_dict)}")
         #
         # https://catt.rs/en/stable/validation.html
-        censored_config = _censore_keys(config_dict, _SECRETS)
+        censored_config = _censore_keys(cfg_dict, _SECRETS)
         messages = transform_error(err)
         for suberror in messages:
             logger.error(suberror)
@@ -286,29 +291,29 @@ def load_config(
         return p.resolve()
 
     # These paths ought to be relative to repo root, or cwd. Make them absolute.
-    config.metadata_dir = _absolute(config.metadata_dir)
-    config.package_dir = _absolute(config.package_dir)
-    config.packager.package_dir = _absolute(
-        config.packager.package_dir,
-        config.package_dir,
+    cfg.metadata_dir = _absolute(cfg.metadata_dir)
+    cfg.package_dir = _absolute(cfg.package_dir)
+    cfg.packager.package_dir = _absolute(
+        cfg.packager.package_dir,
+        cfg.package_dir,
     )
-    for prms in config.environments.values():
-        prms.writer.target_dir = _absolute(prms.writer.target_dir, config.metadata_dir)
+    for prms in cfg.environments.values():
+        prms.writer.target_dir = _absolute(prms.writer.target_dir, cfg.metadata_dir)
 
     # config logger
-    if setup_config and config.logging:
-        setup_logger(config.logging)
+    if setup_config and cfg.logging:
+        setup_logger(cfg.logging)
 
     # use plugins to validate the config
     # class PluginCfgCheck
-    plugin_modules = load_plugins()
+    plugin_modules = load_plugins(cfg)
     for plugin_name, pluggable_instances in plugin_modules.items():
         for plug_instance in pluggable_instances:
             if not isinstance(plug_instance, plugin_model.PluginCfgCheck):
                 continue
             logger.info(f"calling: {plugin_name}.{plug_instance.__class__.__name__}")
             plug_instance.check_config()
-    return config
+    return cfg
 
 
 def filter_dbi_interaction(record):

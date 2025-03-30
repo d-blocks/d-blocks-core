@@ -176,6 +176,8 @@ def env_extract(
     env = config.get_environment_from_config(cfg, environment)
     ext = dbi.extractor_factory(env)
     wrt = writer.create_writer(env.writer)
+    plugins = config.plugin_instances(plugin_model.PluginFSWriter)
+
     with context.FSContext(
         name="command-extract",
         directory=cfg.ctx_dir,
@@ -192,6 +194,7 @@ def env_extract(
             filter_databases=filter_databases,
             filter_names=filter_names,
             filter_creator=filter_creator,
+            plugins=plugins,
         )
     ctx.done()
 
@@ -385,20 +388,20 @@ def cfg_check():
     cfg = config.load_config()
 
     # give me ALL plugins
-    all_plugins = config.plugin_instances(class_=None)
+    all_plugins = config.plugin_instances(cfg, class_=None)
     for plugin_instance in all_plugins:
         logger.info(
             f"- existing plugin: {plugin_instance.module_name}.{plugin_instance.class_name}"
         )
 
-    hello_plugins = config.plugin_instances(plugin_model.PluginHello)
+    hello_plugins = config.plugin_instances(cfg, plugin_model.PluginHello)
     for plug_instance in hello_plugins:
         logger.info(f"calling: {plug_instance.module_name}.{plug_instance.class_name}")
         hello_callable: plugin_model.PluginHello = plug_instance.instance
         retval = hello_callable.hello()
         logger.info(f"{plug_instance.module_name}.{plug_instance.class_name}: {retval}")
 
-    validator_plugins = config.plugin_instances(plugin_model.PluginCfgCheck)
+    validator_plugins = config.plugin_instances(cfg, plugin_model.PluginCfgCheck)
     for validator in validator_plugins:
         logger.info(f"calling: {validator.module_name}.{validator.class_name}")
         validator_callable: plugin_model.PluginCfgCheck = validator.instance
@@ -490,8 +493,7 @@ def walk(
     """Executes a plugin on top of a file or directory."""
     cfg_dict = config.load_config_dict()
     cfg = config.load_config()
-    all_plugins = config.plugin_instances()
-    all_walkers = config.plugin_instances(plugin_model.PluginWalker)
+    all_walkers = config.plugin_instances(cfg, plugin_model.PluginWalker)
     if len(all_walkers) == 0:
         logger.error(
             "No walkers found, did you install the plugin you are trying to use?"

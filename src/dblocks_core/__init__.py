@@ -1,3 +1,4 @@
+from dblocks_core.config.config import logger
 from dblocks_core.context import JupyterContext
 from dblocks_core.dbi import init
 from dblocks_core.dbi.tera_dbi import tera_catch

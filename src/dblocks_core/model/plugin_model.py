@@ -14,7 +14,18 @@ class _PluginInstance:
     instance: Callable
 
 
-class PluginHello(ABC):
+class Plugin:
+    def dbe_init(self, cfg: config_model.Config) -> None:
+        """
+        This function is executed when the plugin is loaded.
+
+        Args:
+            cfg (config_model.Config): The configuration object.
+        """
+        self.cfg = cfg
+
+
+class PluginHello(ABC, Plugin):
     """
     This is an example plugin, that is executed only from command dbe cfg-check.
     """
@@ -26,7 +37,7 @@ class PluginHello(ABC):
         """
 
 
-class PluginCfgCheck(ABC):
+class PluginCfgCheck(ABC, Plugin):
     """
     This plugin can be used to implement custom configuration checks.
     The plugin must implement function with the following signature:
@@ -40,16 +51,13 @@ class PluginCfgCheck(ABC):
     """
 
     @abstractmethod
-    def check_config(cfg: config_model.Config):
+    def check_config():
         """
         Check the config, raise dblocks_core.exc.DConfigError for invalid config.
-
-        Args:
-            cfg (config_model.Config): the config in question
         """
 
 
-class PluginWalker(ABC):
+class PluginWalker(ABC, Plugin):
     """
     This plugin walks through all files in a specified directory.
     """
@@ -59,7 +67,6 @@ class PluginWalker(ABC):
         self,
         path: Path,
         environment: str | None,
-        cfg: config_model.Config,
         **kwargs,
     ):
         """
@@ -77,7 +84,6 @@ class PluginWalker(ABC):
         self,
         path: Path,
         environment: str | None,
-        cfg: config_model.Config,
         **kwargs,
     ):
         """
@@ -95,7 +101,6 @@ class PluginWalker(ABC):
         self,
         path: Path,
         environment: str | None,
-        cfg: config_model.Config,
         **kwargs,
     ):
         """
@@ -109,7 +114,7 @@ class PluginWalker(ABC):
         """
 
 
-class PluginFSWriter(ABC):
+class PluginFSWriter(ABC, Plugin):
     """
     This plugin is called when debbie attempts to write DDL to a file system.
     """
