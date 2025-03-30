@@ -517,7 +517,6 @@ def walk(
         walker_callable.before(
             path_,
             environment,
-            cfg,
             # kwargs
             cfg_dict=cfg_dict,
         )
@@ -527,26 +526,15 @@ def walk(
         )
         if path_.exists():
             if path_.is_file():
-                walker_callable.walker(
-                    path_,
-                    environment,
-                    cfg,  # kwargs
-                    cfg_dict=cfg_dict,
-                )
+                walker_callable.walker(path_, environment)
             elif path_.is_dir():
                 for f in path_.rglob("*.*"):
-                    walker_callable.walker(
-                        f,
-                        environment,
-                        cfg,  # kwargs
-                        cfg_dict=cfg_dict,
-                    )
+                    walker_callable.walker(f, environment)
 
         logger.info(f"after: {walker.module_name}.{walker.class_name}")
         walker_callable.after(
             path_,
             environment,
-            cfg,
             # kwargs
             cfg_dict=cfg_dict,
         )
