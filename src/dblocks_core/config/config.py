@@ -90,7 +90,8 @@ def load_plugins(cfg: config_model.Config) -> dict[str, list[Callable]]:
         plugins[name] = getattr(plugin_module, "PLUGINS")
 
     for plug in plugins.values():
-        plug.dbe_init(cfg)
+        for instance in plug:
+            instance.dbe_init(cfg)
     return plugins
 
 
