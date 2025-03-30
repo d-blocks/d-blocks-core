@@ -21,6 +21,7 @@ def run_extraction(
     wrt: AbstractWriter,
     repo: git.Repo | None,
     *,
+    plugins: None | list[plugin_model.Plugin] = None,
     # extraction options
     filter_since_dt: None | datetime = None,
     filter_databases: str | None = None,
@@ -82,7 +83,8 @@ def run_extraction(
         repo.checkout(env.git_branch, missing_ok=True)
 
     # prep plugins
-    plugins = plugin_instances(plugin_model.PluginFSWriter)
+    if plugins is None:
+        plugins = []
     for instance in plugins:
         logger.info(f"Plugin: {instance.module_name}.{instance.class_name}")
 
