@@ -13,7 +13,6 @@ import sys
 import tomllib
 from importlib import metadata
 from pathlib import Path
-from types import ModuleType
 from typing import Any, Callable, Iterable
 
 import cattrs

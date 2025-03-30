@@ -3,7 +3,7 @@ from datetime import datetime
 import cattrs
 
 from dblocks_core import exc, tagger
-from dblocks_core.config.config import logger, plugin_instances
+from dblocks_core.config.config import logger
 from dblocks_core.context import Context
 from dblocks_core.dbi import AbstractDBI
 from dblocks_core.git import git

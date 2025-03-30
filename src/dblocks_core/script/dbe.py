@@ -176,7 +176,7 @@ def env_extract(
     env = config.get_environment_from_config(cfg, environment)
     ext = dbi.extractor_factory(env)
     wrt = writer.create_writer(env.writer)
-    plugins = config.plugin_instances(plugin_model.PluginFSWriter)
+    plugins = config.plugin_instances(cfg, plugin_model.PluginFSWriter)
 
     with context.FSContext(
         name="command-extract",
@@ -371,7 +371,6 @@ def pkg_deploy(
         directory=ctx_dir,
         no_exception_is_success=False,  # we have to confirm context deletion "by hand"
     ) as ctx:
-        ext = dbi.extractor_factory(env)
         cmd_pkg_deployment.cmd_pkg_deploy(
             pkg_path,
             pkg_cfg=cfg.packager,
