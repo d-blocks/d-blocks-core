@@ -9,7 +9,7 @@ from dblocks_core.dbi import AbstractDBI
 from dblocks_core.git import git
 from dblocks_core.model import config_model, meta_model, plugin_model
 from dblocks_core.script.workflow import dbi
-from dblocks_core.writer import AbstractWriter, config
+from dblocks_core.writer import AbstractWriter
 
 
 def run_extraction(
@@ -21,7 +21,7 @@ def run_extraction(
     wrt: AbstractWriter,
     repo: git.Repo | None,
     *,
-    plugins: None | list[plugin_model.Plugin] = None,
+    plugins: None | list[plugin_model._PluginInstance] = None,
     # extraction options
     filter_since_dt: None | datetime = None,
     filter_databases: str | None = None,
@@ -85,8 +85,16 @@ def run_extraction(
     # prep plugins
     if plugins is None:
         plugins = []
-    for instance in plugins:
-        logger.info(f"Plugin: {instance.module_name}.{instance.class_name}")
+
+    scope_plugins: list[plugin_model._PluginInstance] = []
+    for plugin in plugins:
+        if isinstance(plugin.instance, plugin_model.PluginExtractIsInScope):
+            scope_plugins.append(plugin)
+            logger.info(
+                f"Plugin used to limit scope: {plugin.module_name}.{plugin.class_name}"
+            )
+        else:
+            logger.info(f"Plugin: {plugin.module_name}.{plugin.class_name}")
 
     # prep tgt dir
     env.writer.target_dir.mkdir(exist_ok=True, parents=True)
@@ -131,18 +139,13 @@ def run_extraction(
     in_scope = [obj for obj in env_data.all_objects if obj.in_scope]
 
     # scope plugins
-    scope_plugins: list[plugin_model.PluginExtractIsInScope] = []
-    for plugin in plugins:
-        if isinstance(plugin, plugin_model.PluginExtractIsInScope):
-            scope_plugins.append(plugin)
-
     if scope_plugins:
         logger.info("filtering objects in scope, using installed plugins")
         _in_scope = []
         for obj in in_scope:
             all_agreed_in_scope = True
             for plugin in scope_plugins:
-                if not plugin.is_in_scope(obj):
+                if not plugin.instance.is_in_scope(obj):
                     all_agreed_in_scope = False
                     break
             if all_agreed_in_scope:

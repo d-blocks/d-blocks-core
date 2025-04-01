@@ -211,6 +211,8 @@ class FSWriter(AbstractWriter):
 
         # call plugins after
         for plugin_instance in callables:
+            if not isinstance(plugin_instance, plugin_model.PluginFSWriter):
+                continue
             logger.debug(
                 f"call plugin after write: {plugin_instance.module_name}.{plugin_instance.class_name}"
             )
