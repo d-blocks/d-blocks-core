@@ -157,3 +157,31 @@ class PluginFSWriter(ABC, Plugin):
             **kwargs: Additional arguments.
         """
         pass
+
+
+class PluginExtractIsInScope(ABC, Plugin):
+    """
+    This plugin is called when the extract process is running. It can be used to influence list
+    of objects in scope of the extraction.
+
+    In case of multiple plugins, if one of them returns False, the object is NOT in scope
+    of the extraction (all must agree that the object is in scope).
+    """
+
+    @abstractmethod
+    def is_in_scope(
+        self,
+        obj: meta_model.IdentifiedObject,
+        **kwargs,
+    ) -> bool:
+        """
+        This function is executed to determine if the object is in scope.
+
+        Args:
+            obj (meta_model.IdentifiedObject): The object being checked.
+            **kwargs: Additional arguments.
+
+        Returns:
+            bool: True if the object is in scope, False otherwise.
+        """
+        pass

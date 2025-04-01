@@ -9,7 +9,7 @@ from dblocks_core.dbi import AbstractDBI
 from dblocks_core.git import git
 from dblocks_core.model import config_model, meta_model, plugin_model
 from dblocks_core.script.workflow import dbi
-from dblocks_core.writer import AbstractWriter
+from dblocks_core.writer import AbstractWriter, config
 
 
 def run_extraction(
@@ -129,6 +129,26 @@ def run_extraction(
     started_when = datetime.now()
     db, prev_db = None, None
     in_scope = [obj for obj in env_data.all_objects if obj.in_scope]
+
+    # scope plugins
+    scope_plugins: list[plugin_model.PluginExtractIsInScope] = []
+    for plugin in plugins:
+        if isinstance(plugin, plugin_model.PluginExtractIsInScope):
+            scope_plugins.append(plugin)
+
+    if scope_plugins:
+        logger.info("filtering objects in scope, using installed plugins")
+        _in_scope = []
+        for obj in in_scope:
+            all_agreed_in_scope = True
+            for plugin in scope_plugins:
+                if not plugin.is_in_scope(obj):
+                    all_agreed_in_scope = False
+                    break
+            if all_agreed_in_scope:
+                _in_scope.append(obj)
+        in_scope = _in_scope
+
     logger.info(f"total lenght of the queue is: {len(in_scope)}")
     for i, obj in enumerate(in_scope, start=1):
         db = obj.database_name

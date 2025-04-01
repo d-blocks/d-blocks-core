@@ -176,7 +176,13 @@ def env_extract(
     env = config.get_environment_from_config(cfg, environment)
     ext = dbi.extractor_factory(env)
     wrt = writer.create_writer(env.writer)
-    plugins = config.plugin_instances(cfg, plugin_model.PluginFSWriter)
+
+    plugins_writer = config.plugin_instances(cfg, plugin_model.PluginFSWriter)
+    plugins_extractor = config.plugin_instances(
+        cfg,
+        plugin_model.PluginExtractIsInScope,
+    )
+    plugins = plugins_writer + plugins_extractor
 
     with context.FSContext(
         name="command-extract",
