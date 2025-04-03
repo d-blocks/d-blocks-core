@@ -185,3 +185,17 @@ class PluginExtractIsInScope(ABC, Plugin):
             bool: True if the object is in scope, False otherwise.
         """
         pass
+
+
+class PluginDBIRewriteStatement(ABC, Plugin):
+    """
+    This plugin is called by method deploy_statements by implementations
+    of dblocks_core.dbi.contract.AbstractDBI.
+
+    In effect, whenever the statement is deployed to the database.
+    """
+
+    @abstractmethod
+    def rewrite_statement(self, statement: str) -> str:
+        """The function rewrites statement before it is sent to the database."""
+        pass

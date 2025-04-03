@@ -152,6 +152,26 @@ class FSWriter(AbstractWriter):
         tf = self.target_dir / f"{env_name}-databases.json"
         tf.write_text(text, encoding=UTF8)
 
+    def path_to_object(
+        self,
+        obj: meta_model.DescribedObject,
+        database_tag: str,
+        parent_tags_in_scope: list[str] | None = None,
+    ) -> Path | str:
+        # překlad typu objektu na extenzi
+        try:
+            ext = TYPE_TO_EXT[obj.identified_object.object_type]
+        except KeyError:
+            raise NotImplementedError(
+                f"can not write {obj.identified_object.object_type}"
+            ) from None
+
+        # cílové umístění
+        filename = f"{obj.identified_object.object_name.lower()}{ext}"
+        target_dir = self.standardize_subpath(database_tag, parent_tags_in_scope)
+        target_file = target_dir / filename
+        return target_file
+
     def write_object(
         self,
         obj: meta_model.DescribedObject,
@@ -167,18 +187,8 @@ class FSWriter(AbstractWriter):
             database_tag (str): The database tag associated with the object.
             parent_tags_in_scope (list[str] | None): Optional list of parent tags in scope.
         """
-        # překlad typu objektu na extenzi
-        try:
-            ext = TYPE_TO_EXT[obj.identified_object.object_type]
-        except KeyError:
-            raise NotImplementedError(
-                f"can not write {obj.identified_object.object_type}"
-            ) from None
-
-        # cílové umístění
-        filename = f"{obj.identified_object.object_name.lower()}{ext}"
-        target_dir = self.standardize_subpath(database_tag, parent_tags_in_scope)
-        target_file = target_dir / filename
+        target_file = self.path_to_object(obj, database_tag, parent_tags_in_scope)
+        target_dir = target_file.parent
 
         logger.debug(f"write to: {target_file.as_posix()}")
         target_dir.mkdir(parents=True, exist_ok=True)

@@ -11,9 +11,9 @@ import re
 from sqlalchemy import exc as sa_exc
 
 from dblocks_core import exc
-from dblocks_core.config.config import logger
+from dblocks_core.config.config import logger, plugin_instances
 from dblocks_core.dbi import contract
-from dblocks_core.model import meta_model
+from dblocks_core.model import meta_model, plugin_model
 
 # custom log level for DB interaction
 # TRACE: 5
@@ -273,6 +273,11 @@ class TeraDBI(contract.AbstractDBI):
     ):
         self.engine = engine
 
+        # import plugins
+        self.rewrite_plugins: list[plugin_model._PluginInstance] = plugin_instances(
+            plugin_model.PluginDBIRewriteStatement
+        )
+
     @translate_error()
     def deploy_statements(self, statements: list[str]):
         """
@@ -295,7 +300,16 @@ class TeraDBI(contract.AbstractDBI):
                 # skip sqlalchemy compilation step, send the query directly
                 # thus, sqlalchemy wont't try to compile named parameters
                 # (therefore compilation of stored procedures should work)
+                for plugin_instance in self.rewrite_plugins:
+                    new_sql = plugin_instance.instance.rewrite_statement(sql)
+                    if new_sql != sql:
+                        logger.log(
+                            LOG_LEVEL_NAME,
+                            f"-- statement was changed by a plugin: {plugin_instance.class_name}",
+                        )
+                        sql = new_sql
                 logger.log(LOG_LEVEL_NAME, _LOG_SEPARATOR + sql + _LOG_SEPARATOR)
+                # FIXME: prepare plugin, enable change of the code before it is sent to the database
                 con.exec_driver_sql(sql)
                 # FIXME: log size of the result set
 
