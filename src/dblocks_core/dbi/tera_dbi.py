@@ -309,7 +309,6 @@ class TeraDBI(contract.AbstractDBI):
                         )
                         sql = new_sql
                 logger.log(LOG_LEVEL_NAME, _LOG_SEPARATOR + sql + _LOG_SEPARATOR)
-                # FIXME: prepare plugin, enable change of the code before it is sent to the database
                 con.exec_driver_sql(sql)
                 # FIXME: log size of the result set
 
