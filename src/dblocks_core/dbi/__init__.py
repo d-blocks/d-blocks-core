@@ -76,17 +76,21 @@ def init(
     )
 
 
-def extractor_factory(
-    env: config_model.EnvironParameters,
+def dbi_factory(
+    cfg: config_model.Config,
+    environment: str,
 ) -> AbstractDBI:
+    env = __get_environment_from_config(cfg, environment)
     if env.platform == config_model.TERADATA:
-        engine = create_engine(env, dialect=TERADATA_DIALECT)
-        return tera_dbi.TeraDBI(engine)
+        engine = create_engine(cfg, environment, dialect=TERADATA_DIALECT)
+        return tera_dbi.TeraDBI(engine, cfg=cfg)
+
     raise NotImplementedError
 
 
 def create_engine(
-    secret: config_model.EnvironParameters,
+    cfg: config_model.Config,
+    environment: str,
     *,
     dialect: str = TERADATA_DIALECT,
     pool_size: int = 1,
@@ -108,7 +112,8 @@ def create_engine(
     Returns:
         sa.Engine: database engine
     """
-    logger.debug(f"create engine: {dialect=}: {secret}")
+    secret = __get_environment_from_config(cfg, environment)
+    logger.debug(f"create engine: {dialect=}")
     connect_string = create_connect_string(secret, dialect)
     engine = sa.create_engine(
         connect_string,

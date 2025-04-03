@@ -43,7 +43,7 @@ def env_test_connection(environment: str):
     """Connection test for configured environment."""
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
-    ext = dbi.extractor_factory(env)
+    ext = dbi.dbi_factory(cfg, environment)
     ext.test_connection()
 
 
@@ -174,7 +174,7 @@ def env_extract(
             sleep(1)
 
     env = config.get_environment_from_config(cfg, environment)
-    ext = dbi.extractor_factory(env)
+    ext = dbi.dbi_factory(cfg, environment)
     wrt = writer.create_writer(env.writer)
 
     plugins_writer = config.plugin_instances(cfg, plugin_model.PluginFSWriter)
@@ -262,7 +262,7 @@ def env_deploy(
         directory=cfg.ctx_dir,
         no_exception_is_success=False,  # we have to confirm context deletion "by hand"
     ) as ctx:
-        ext = dbi.extractor_factory(env)
+        ext = dbi.dbi_factory(cfg, environment)
         failures = cmd_deployment.deploy_env(
             deploy_dir,
             cfg=cfg,
@@ -379,8 +379,8 @@ def pkg_deploy(
     ) as ctx:
         cmd_pkg_deployment.cmd_pkg_deploy(
             pkg_path,
-            pkg_cfg=cfg.packager,
-            env_cfg=env,
+            cfg=cfg,
+            environment=environment,
             ctx=ctx,
             if_exists=if_exists,
             dry_run=dry_run,

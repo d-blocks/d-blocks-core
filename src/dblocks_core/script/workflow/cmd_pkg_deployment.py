@@ -2,7 +2,12 @@ from datetime import datetime
 from pathlib import Path
 
 from dblocks_core import context, dbi, exc, tagger
-from dblocks_core.config.config import add_logger_sink, logger, remove_logger_sink
+from dblocks_core.config.config import (
+    add_logger_sink,
+    get_environment_from_config,
+    logger,
+    remove_logger_sink,
+)
 from dblocks_core.dbi import AbstractDBI
 from dblocks_core.deployer import fsequencer, tokenizer
 from dblocks_core.model import config_model, meta_model
@@ -21,12 +26,14 @@ _DTTM_FMT = "%Y%m%d%H%M%S"
 def cmd_pkg_deploy(
     pkg_path: Path,
     *,
-    pkg_cfg: config_model.PackagerConfig,
-    env_cfg: config_model.EnvironParameters,
+    cfg: config_model.Config,
+    environment: str,
     ctx: context.Context,
     if_exists: str | None,
     dry_run: bool = False,
 ):
+    pkg_cfg = cfg.packager
+    env_cfg = get_environment_from_config(cfg, environment)
     # sanity check
     if if_exists is not None:
         if if_exists not in _DEPLOYMENT_STRATEGIES:
@@ -59,7 +66,7 @@ def cmd_pkg_deploy(
     )
 
     # dbi
-    ext = dbi.extractor_factory(env_cfg)
+    ext = dbi.dbi_factory(cfg, environment)
 
     # deployment batch
     logger.info(f"scanning steps dir: {root_dir}")

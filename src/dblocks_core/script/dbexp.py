@@ -57,7 +57,7 @@ def pkg_maint_backup(
     logger.info("drop backup older than: " + since_dt.strftime("%Y-%m-%d %H:%M:%S"))
 
     env = config.get_environment_from_config(cfg, environment)
-    ext = dbi.extractor_factory(env)
+    ext = dbi.dbi_factory(cfg, environment)
     pkg = fpackager.packager_factory(cfg.packager)
     if package_name == "":
         package_name = datetime.now().strftime("%Y-%m-%d") + "-drop-backup"

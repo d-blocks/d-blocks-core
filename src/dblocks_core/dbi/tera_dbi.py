@@ -13,7 +13,7 @@ from sqlalchemy import exc as sa_exc
 from dblocks_core import exc
 from dblocks_core.config.config import logger, plugin_instances
 from dblocks_core.dbi import contract
-from dblocks_core.model import meta_model, plugin_model
+from dblocks_core.model import config_model, meta_model, plugin_model
 
 # custom log level for DB interaction
 # TRACE: 5
@@ -270,12 +270,15 @@ class TeraDBI(contract.AbstractDBI):
     def __init__(
         self,
         engine: sa.Engine,
+        cfg: config_model.Config,
     ):
         self.engine = engine
+        self.cfg = cfg
 
         # import plugins
         self.rewrite_plugins: list[plugin_model._PluginInstance] = plugin_instances(
-            plugin_model.PluginDBIRewriteStatement
+            cfg,
+            plugin_model.PluginDBIRewriteStatement,
         )
 
     @translate_error()
