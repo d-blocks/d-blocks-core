@@ -49,7 +49,7 @@ def quickstart():
         rules=env.tagging_rules,
         tagging_strip_db_with_no_rules=env.tagging_strip_db_with_no_rules,
     )
-    ext = dbi.extractor_factory(env)
+    ext = dbi.dbi_factory(cfg, demo_env_name)
 
     # odjedu sadu statementů v konstrukci prostředí do demo databáze
     env_file = Path("env-init") / "demo_env_init.sql"
