@@ -178,7 +178,7 @@ class FSWriter(AbstractWriter):
         *,
         database_tag: str,
         parent_tags_in_scope: list[str] | None = None,
-        plugin_instances: list[plugin_model.PluginFSWriter] | None = None,
+        plugin_instances: list[plugin_model._PluginInstance] | None = None,
     ):
         """Writes a described object to a file.
 
@@ -197,14 +197,14 @@ class FSWriter(AbstractWriter):
         ddl_script = "\n".join(self._get_statements(obj))
 
         # call plugins before
-        callables = [] if plugin_instances is None else plugin_instances
-        for plugin_instance in callables:
+        for plugin in plugin_instances:
+            plugin_instance = plugin.instance
             if not isinstance(plugin_instance, plugin_model.PluginFSWriter):
                 continue
             logger.debug(
-                f"call plugin before write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+                f"call plugin before write: {plugin.module_name}.{plugin.class_name}"
             )
-            new_ddl_script = plugin_instance.instance.before(
+            new_ddl_script = plugin_instance.before(
                 target_file,
                 obj,
                 ddl_script,
@@ -220,13 +220,14 @@ class FSWriter(AbstractWriter):
         )
 
         # call plugins after
-        for plugin_instance in callables:
+        for plugin in plugin_instances:
+            plugin_instance = plugin.instance
             if not isinstance(plugin_instance, plugin_model.PluginFSWriter):
                 continue
             logger.debug(
-                f"call plugin after write: {plugin_instance.module_name}.{plugin_instance.class_name}"
+                f"call plugin after write: {plugin.module_name}.{plugin.class_name}"
             )
-            plugin_instance.instance.after(target_file, obj)
+            plugin_instance.after(target_file, obj)
 
     def _get_statements(
         self,
