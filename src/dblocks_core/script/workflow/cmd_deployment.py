@@ -133,7 +133,7 @@ def deploy_env(
     # FIXME - predetermined number of waaves....
     deployed_cnt = -1
     wave = 2
-    while deployed_cnt == 0:
+    while deployed_cnt != 0:
         logger.info(f"starting wave #{wave}")
         deployed_cnt = deploy_queue(
             others,
