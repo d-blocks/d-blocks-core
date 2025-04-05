@@ -232,7 +232,7 @@ def deploy_script_with_conflict_strategy(
     if object_type == meta_model.PROCEDURE:
         statements = [script]
     else:
-        statements = [s for s in tokenizer.tokenize_statements(script)]
+        statements = [s.statement for s in tokenizer.tokenize_statements(script)]
 
     # FIXME: this only allows for checkpoint with granularity per file, do we want to prep checkpoints per statement ???
     statements = [tgr.expand_statement(s) for s in statements]

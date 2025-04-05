@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Sequence
 
 from attrs import define, field
@@ -35,6 +36,7 @@ MANAGED_TYPES = [
     TRIGGER,
     FUNCTION,
 ]
+
 
 # types of object dbe can deploy
 GENERIC_SQL = "SQL"

@@ -40,8 +40,8 @@ class DeploymentFile:
         separator=tokenizer.SEMICOLON,
     ) -> Generator[DeploymentStatement, None, None]:
         txt = self.file.read_text(encoding="utf-8", errors="strict")
-        for sql in tokenizer.tokenize_statements(txt, separator=separator):
-            yield DeploymentStatement(sql=sql)
+        for statement in tokenizer.tokenize_statements(txt, separator=separator):
+            yield DeploymentStatement(sql=statement.statement)
 
 
 @define

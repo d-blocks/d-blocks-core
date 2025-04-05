@@ -40,12 +40,12 @@ COLLECT STATISTICS
                 ON a_tab 
 ;
 """
-    statements = [s for s in tokenizer.tokenize_statements(sql)]
+    statements = [s.statement for s in tokenizer.tokenize_statements(sql)]
     assert len(statements) == 2
 
     test_file = fixtures_dir / "stats.tab"
     test_content = test_file.read_text(encoding="utf-8")
-    statements = [s for s in tokenizer.tokenize_statements(test_content)]
+    statements = [s.statement for s in tokenizer.tokenize_statements(test_content)]
     assert len(statements) == 3
     print(statements[1])
 
@@ -61,7 +61,7 @@ def test_tokenizer():
     for inp in inputs:
         with pytest.raises(exc.DParsingError):
             # tokenizer is a generator hence we need to do "next" on it
-            statements = [s for s in tokenizer.tokenize_statements(inp)]
+            statements = [s.statement for s in tokenizer.tokenize_statements(inp)]
             assert statements == []
 
     # works with valid inputs
@@ -99,7 +99,7 @@ def test_tokenizer():
     ]
     for i, (inp, expected) in enumerate(inputs):
         logger.debug(inp)
-        statements = [s for s in tokenizer.tokenize_statements(inp)]
+        statements = [s.statement for s in tokenizer.tokenize_statements(inp)]
         assert len(statements) == len(expected)
         assert statements == expected, f"at test {i}"
         # for i, stmt in enumerate(statements):

@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Generator
 
 from dblocks_core import exc
@@ -14,12 +15,26 @@ MINUS = "-"
 QUOTE = '"'
 
 
+from attrs import field, frozen
+
+
+class StatementType(Enum):
+    SQL = "SQL"
+    BTEQ = "BTEQ"
+
+
+@frozen
+class Statement:
+    type: str
+    statement: StatementType
+
+
 def tokenize_statements(
     text: str,
     *,
     separator=SEMICOLON,
     raise_errors: bool = True,
-) -> Generator[str, None, None]:
+) -> Generator[Statement, None, None]:
     """
     Tokenizes SQL statements from a text input, handling comments and string
     literals.
@@ -169,7 +184,7 @@ def tokenize_statements(
                     logger.error(message)
 
             # yield the statement and prep for next iteration
-            yield statement
+            yield Statement(type=StatementType.SQL, statement=statement)
             stmt_count = stmt_count + 1
             prev_stmt_idx = i + 1
 
@@ -192,6 +207,6 @@ def tokenize_statements(
     try:
         statement = text[prev_stmt_idx:].strip()
         if len(statement) > 0:
-            yield statement
+            yield Statement(type=StatementType.SQL, statement=statement)
     except IndexError:
         pass
