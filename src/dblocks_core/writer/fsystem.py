@@ -197,6 +197,7 @@ class FSWriter(AbstractWriter):
         ddl_script = "\n".join(self._get_statements(obj))
 
         # call plugins before
+        # FIXME: subptimal, cycle through everything, always ... really?
         for plugin in plugin_instances:
             plugin_instance = plugin.instance
             if not isinstance(plugin_instance, plugin_model.PluginFSWriter):
