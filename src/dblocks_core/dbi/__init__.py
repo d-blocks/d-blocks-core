@@ -60,9 +60,9 @@ def init(
         config (config_model.Config): the configuration
     """
     cfg = __load_config()
-    env = __get_environment_from_config(cfg, environment)
     engine = create_engine(
-        env,
+        cfg,
+        environment,
         dialect=dialect,
         pool_size=pool_size,
         poolclass=poolclass,
