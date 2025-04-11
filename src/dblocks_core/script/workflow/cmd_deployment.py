@@ -38,6 +38,7 @@ def deploy_env(
     delete_databases: bool = False,
     assume_yes: bool = False,
     countdown_from: int,
+    dry_run: bool = False,
 ) -> dict[str, meta_model.DeploymentFailure]:
 
     # sanity check
@@ -127,6 +128,7 @@ def deploy_env(
         total_queue_length=len(queue),
         failures=failures,
         if_exists=if_exists,
+        dry_run=dry_run,
     )
 
     # deploy others
@@ -144,6 +146,7 @@ def deploy_env(
             total_queue_length=len(queue),
             failures=failures,
             if_exists=if_exists,
+            dry_run=dry_run,
         )
         wave += 1
     return failures
@@ -159,6 +162,7 @@ def deploy_queue(
     total_queue_length: int,
     failures: dict[str, meta_model.DeploymentFailure],
     if_exists: str | None,
+    dry_run: bool = False,
 ) -> int:
     """
     Deploys a queue of files to the database.
@@ -199,6 +203,7 @@ def deploy_queue(
                 object_name=object_name,
                 ext=ext,
                 if_exists=if_exists,
+                dry_run=dry_run,
             )
             deployed_cnt += 1
 
@@ -339,14 +344,6 @@ def deploy_script_with_conflict_strategy(
         if object_name is None:
             errs.append("if_exists was given, but object_name is None")
 
-        # FIXME: see FIXMEs in cmd_deployment.deploy_file
-        #        the first part of the condition (is not None) should NOT be here
-        #        and is only a temporary stopgap measure
-        if object_type is not None and object_type not in meta_model.MANAGED_TYPES:
-            errs.append(
-                f"if_exists was given, but {object_type=}, "
-                f"expected one of {meta_model.MANAGED_TYPES}"
-            )
     if errs:
         raise exc.DOperationsError("\n".join(errs))
 
@@ -369,7 +366,11 @@ def deploy_script_with_conflict_strategy(
 
     # check the existence
     obj: meta_model.IdentifiedObject | None = None
-    check_if_exists = object_database is not None and object_name is not None
+    check_if_exists = (
+        object_database is not None
+        and object_name is not None
+        and object_type in {meta_model.MANAGED_TYPES}
+    )
     if check_if_exists:
         logger.debug(f"checking if the object exists: {object_database}.{object_name}")
         obj = ext.get_identified_object(object_database, object_name)

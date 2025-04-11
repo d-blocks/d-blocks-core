@@ -240,6 +240,9 @@ def env_deploy(
         ),
     ] = False,
     log_each: Annotated[int, typer.Option(help="Log every n-th object")] = 20,
+    dry_run: Annotated[
+        bool, typer.Option(help="Dry run only simulates deployment.")
+    ] = False,
 ):
     """
     Deploy all objects from a directory to the environment, regardless of dependencies.
@@ -275,6 +278,7 @@ def env_deploy(
             delete_databases=delete_databases,
             assume_yes=assume_yes,
             countdown_from=countdown_from,
+            dry_run=dry_run,
         )
 
         cmd_deployment.make_report(cfg.report_dir, environment, failures)
