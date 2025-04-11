@@ -20,8 +20,14 @@ from dblocks_core.writer import fsystem
 RAISE_STRATEGY = "raise"
 DROP_STRATEGY = "drop"
 RENAME_STRATEGY = "rename"
+IGNORE_STRATEGY = "ignore"
 _DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
-_DEPLOYMENT_STRATEGIES = [DROP_STRATEGY, RENAME_STRATEGY, RAISE_STRATEGY]
+_DEPLOYMENT_STRATEGIES = [
+    DROP_STRATEGY,
+    RENAME_STRATEGY,
+    RAISE_STRATEGY,
+    IGNORE_STRATEGY,
+]
 _DTTM_FMT = "%Y%m%d%H%M%S"
 
 
@@ -370,6 +376,7 @@ def deploy_script_with_conflict_strategy(
         object_database is not None
         and object_name is not None
         and object_type in {meta_model.MANAGED_TYPES}
+        and if_exists != IGNORE_STRATEGY  # do not check if ignore
     )
     if check_if_exists:
         logger.debug(f"checking if the object exists: {object_database}.{object_name}")

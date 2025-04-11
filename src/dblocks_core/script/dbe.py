@@ -230,7 +230,7 @@ def env_deploy(
     if_exists: Annotated[
         str,
         typer.Option(
-            help="What to do if the object we try to deploy exists: raise/rename/drop"
+            help="What to do if the object we try to deploy exists: ignore/raise/rename/drop"
         ),
     ] = "raise",
     delete_databases: Annotated[
