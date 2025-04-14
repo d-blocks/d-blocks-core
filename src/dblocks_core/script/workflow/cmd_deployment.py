@@ -375,7 +375,7 @@ def deploy_script_with_conflict_strategy(
     check_if_exists = (
         object_database is not None
         and object_name is not None
-        and object_type in {meta_model.MANAGED_TYPES}
+        and object_type in meta_model.MANAGED_TYPES
         and if_exists != IGNORE_STRATEGY  # do not check if ignore
     )
     if check_if_exists:
