@@ -39,7 +39,7 @@ TYPE_TO_EXT = {
     meta_model.GENERIC_BTEQ: GENERIC_BTEQ_SUFFIX,
 }
 
-EXT_TO_TYPE = {v: k for k, v in TYPE_TO_EXT.items()}
+EXT_TO_TYPE = {v.lower(): k for k, v in TYPE_TO_EXT.items()}
 
 STP_DATABASES = "005-databases"
 STP_TYPES = "006-types"
@@ -115,7 +115,7 @@ class FSWriter(AbstractWriter):
             if not file.is_file():
                 continue
             # skip files that are not managed by this tool
-            if file.suffix not in EXT_TO_TYPE:
+            if file.suffix.lower() not in EXT_TO_TYPE:
                 continue
 
             # skip the object if the db was skipped

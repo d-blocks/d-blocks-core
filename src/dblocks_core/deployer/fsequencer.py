@@ -95,7 +95,7 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
         for f in _input_files:
             # one of supported file types
             try:
-                file_type = fsystem.EXT_TO_TYPE[f.suffix]
+                file_type = fsystem.EXT_TO_TYPE[f.suffix.lower()]
             except KeyError:
                 logger.warning(f"skipping file with unsupported type ({f.suffix}): {f}")
                 continue
@@ -114,7 +114,7 @@ def create_batch(root_dir: Path, tgr: tagger.Tagger | None = None) -> Deployment
                 if f.is_dir():
                     continue
                 try:
-                    file_type = fsystem.EXT_TO_TYPE[f.suffix]
+                    file_type = fsystem.EXT_TO_TYPE[f.suffix.lower()]
                 except KeyError:
                     logger.warning(
                         f"skipping file with unsupported type ({f.suffix}): {f}"

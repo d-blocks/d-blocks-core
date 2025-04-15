@@ -72,8 +72,8 @@ def deploy_env(
         f
         for f in deploy_dir.rglob("*")
         if f.is_file()
-        and f.suffix in fsystem.EXT_TO_TYPE
-        and f.suffix not in _DO_NOT_DEPLOY  # TODO: skip databases for now
+        and f.suffix.lower() in fsystem.EXT_TO_TYPE
+        and f.suffix.lower() not in _DO_NOT_DEPLOY  # TODO: skip databases for now
     ]
     queue.sort()
 
