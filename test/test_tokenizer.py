@@ -105,3 +105,9 @@ def test_tokenizer():
         # for i, stmt in enumerate(statements):
         #     print(stmt)
         #     print(expected[i])
+
+
+def test_in_comment():
+    inp = "s1 -- comment's\ns2"
+    statements = [s.statement for s in tokenizer.tokenize_statements(inp)]
+    assert len(statements) == 1

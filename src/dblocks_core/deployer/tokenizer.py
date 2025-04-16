@@ -93,7 +93,7 @@ def tokenize_statements(
             next_2chars = ""
 
         # start and end of string
-        if char == APOSTROPHE and not in_comment:
+        if char == APOSTROPHE and not (in_comment or in_single_line_comment):
             # start of a string literal
             if not in_string:
                 in_string = True
