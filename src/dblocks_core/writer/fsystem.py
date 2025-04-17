@@ -16,6 +16,9 @@ JIDX_SUFFIX = ".jix"
 IDX_SUFFIX = ".idx"
 MACRO_SUFFIX = ".mcr"
 DATABASE_SUFFIX = ".dtb"
+USER_SUFFIX = ".usr"
+ROLE_SUFFIX = ".rol"
+PROFILE_SUFFIX = ".prf"
 TRIGGER_SUFFIX = ".trg"
 FUNCTION_SUFFIX = ".func"
 TYPE_SUFFIX = ".type"
@@ -37,10 +40,15 @@ TYPE_TO_EXT = {
     meta_model.AUTHORIZATION: AUTH_SUFFIX,
     meta_model.GENERIC_SQL: GENERIC_SQL_SUFFIX,
     meta_model.GENERIC_BTEQ: GENERIC_BTEQ_SUFFIX,
+    meta_model.USER: USER_SUFFIX,
+    meta_model.ROLE: ROLE_SUFFIX,
+    meta_model.PROFILE: PROFILE_SUFFIX,
 }
 
 EXT_TO_TYPE = {v.lower(): k for k, v in TYPE_TO_EXT.items()}
 
+STP_PROFILES = "003-profiles"
+STP_ROLES = "004-roles"
 STP_DATABASES = "005-databases"
 STP_TYPES = "006-types"
 STP_AUTH = "007-auth"
@@ -50,6 +58,8 @@ STP_EXECUTABLES = "030-executables"
 STP_GENERIC_SQL = "050-sql"
 
 EXT_TO_STEP = {
+    PROFILE_SUFFIX: STP_PROFILES,
+    ROLE_SUFFIX: STP_ROLES,
     TABLE_SUFFIX: STP_TABLES,
     VIEW_SUFFIX: STP_VIW_INDICES,
     PROC_SUFFIX: STP_EXECUTABLES,

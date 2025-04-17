@@ -53,6 +53,7 @@ class AbstractDBI(ABC):
         self,
         database_name: str,
         object_name: str,
+        object_type: str,
     ) -> meta_model.IdentifiedObject | None:
         """Returns basic metadata about object in a database."""
         ...

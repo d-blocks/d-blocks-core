@@ -21,13 +21,15 @@ RAISE_STRATEGY = "raise"
 DROP_STRATEGY = "drop"
 RENAME_STRATEGY = "rename"
 IGNORE_STRATEGY = "ignore"
+SKIP_STRATEGY = "skip"
 #_DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
-_DO_NOT_DEPLOY = {}  # TODO: skip databases for now
+_DO_NOT_DEPLOY = {}
 _DEPLOYMENT_STRATEGIES = [
     DROP_STRATEGY,
     RENAME_STRATEGY,
     RAISE_STRATEGY,
     IGNORE_STRATEGY,
+    SKIP_STRATEGY,
 ]
 _DTTM_FMT = "%Y%m%d%H%M%S"
 
@@ -381,7 +383,7 @@ def deploy_script_with_conflict_strategy(
     )
     if check_if_exists:
         logger.debug(f"checking if the object exists: {object_database}.{object_name}")
-        obj = ext.get_identified_object(object_database, object_name)
+        obj = ext.get_identified_object(object_database, object_name, object_type)
         logger.debug(obj)
 
     # implement conflict strategy
@@ -401,6 +403,9 @@ def deploy_script_with_conflict_strategy(
                 ]
             )
             raise exc.DOperationsError(msg)
+        elif if_exists == SKIP_STRATEGY:
+            logger.info(f"skip: {object_database}.{object_name}")
+            return
         elif if_exists == DROP_STRATEGY:
             logger.info(f"drop: {object_database}.{object_name}")
             ext.drop_identified_object(obj, ignore_errors=True)

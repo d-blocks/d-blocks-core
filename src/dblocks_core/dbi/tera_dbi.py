@@ -57,6 +57,11 @@ STATEMENT_ERRORS = (
 ERR_DSC_HOSTNAME_LOOKUP_FAILED = "Hostname lookup failed"
 ERR_DSC_FAILED_TO_CONNECT = "Failed to connect to"
 
+_DBKIND_TO_TYPE = {
+    "D": meta_model.DATABASE,
+    "U": meta_model.USER,
+}
+
 _TABLEKIND_TO_TYPE = {
     "O": meta_model.TABLE,
     "T": meta_model.TABLE,  # table
@@ -476,6 +481,7 @@ class TeraDBI(contract.AbstractDBI):
         self,
         database_name: str,
         object_name: str,
+        object_type: str,
     ) -> meta_model.IdentifiedObject | None:
         """
         Retrieves an identified database object.
@@ -494,6 +500,11 @@ class TeraDBI(contract.AbstractDBI):
         - Maps the query result to a `meta_model.IdentifiedObject`.
         - Returns the identified object, or None if not found.
         """
+
+        # Exception for database object as it is obtained from different metadata table
+        if object_type == meta_model.DATABASE:
+            return self.get_identified_object_for_db(database_name)
+
         sql = """
         select
             databaseName as database_name,
@@ -519,6 +530,64 @@ class TeraDBI(contract.AbstractDBI):
                     object_name=row.object_name.strip(),
                     object_type=_TABLEKIND_TO_TYPE[row.object_type.strip()],
                     platform_object_type=row.object_type.strip(),
+                    create_datetime=row.create_datetime,
+                    last_alter_datetime=row.last_alter_datetime,
+                    creator_name=row.creator_name.strip() if row.creator_name else None,
+                    last_alter_name=(
+                        row.last_alter_name.strip() if row.last_alter_name else None
+                    ),
+                )
+                for row in con.execute(stmt).fetchall()
+            ]
+            if len(rows) == 0:
+                return None
+            return rows[0]
+
+    @translate_error()
+    def get_identified_object_for_db(
+        self,
+        database_name: str
+    ) -> meta_model.IdentifiedObject | None:
+        """
+        Retrieves an identified object representing database.
+
+        Args:
+            database_name (str): The name of the database containing the object.
+
+        Returns:
+            meta_model.IdentifiedObject | None: The identified object, or None if not
+                found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the object details from `dbc.databases`.
+        - Executes the query using the database engine.
+        - Maps the query result to a `meta_model.IdentifiedObject`.
+        - Returns the identified object, or None if not found.
+        """
+        sql = """
+        select
+            databaseName as database_name,
+            dbkind as db_type,
+            createTimeStamp as create_datetime,
+            lastAlterTimeStamp as last_alter_datetime,
+            creatorName as creator_name,
+            lastAlterName as last_alter_name
+
+        from dbc.tablesV
+        where databaseName = :database_name
+            and tableName = :object_name
+        order by 1,2
+        """
+        stmt = sa.text(sql).bindparams(
+            database_name=database_name, object_name=object_name
+        )
+        with self.engine.connect() as con:
+            rows = [
+                meta_model.IdentifiedObject(
+                    database_name=row.database_name.strip(),
+                    object_name=row.database_name.strip(),
+                    object_type=_DBKIND_TO_TYPE[row.db_type.strip()],
+                    platform_object_type=row.db_type.strip(),
                     create_datetime=row.create_datetime,
                     last_alter_datetime=row.last_alter_datetime,
                     creator_name=row.creator_name.strip() if row.creator_name else None,
