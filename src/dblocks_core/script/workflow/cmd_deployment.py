@@ -190,15 +190,12 @@ def deploy_queue(
     deployed_cnt = 0
 
     for i, file in enumerate(files):
-        logger.info(f"Processed file {i}")
         chk = file.as_posix()
         if ctx.get_checkpoint(chk):
             logger.debug(f"skip: {chk}")
             continue
-        logger.info("Still running")
 
-        if log_each == 1 or (i + 1) % log_each == 0:
-            logger.info(f"Log each {log_each}")
+        if (i + 1) % log_each == 0:
             logger.info(f" script #{i+1}/{total_queue_length + 1}: {file.as_posix()}")
 
         object_name = file.stem
