@@ -21,7 +21,8 @@ RAISE_STRATEGY = "raise"
 DROP_STRATEGY = "drop"
 RENAME_STRATEGY = "rename"
 IGNORE_STRATEGY = "ignore"
-_DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
+#_DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
+_DO_NOT_DEPLOY = {}  # TODO: skip databases for now
 _DEPLOYMENT_STRATEGIES = [
     DROP_STRATEGY,
     RENAME_STRATEGY,
