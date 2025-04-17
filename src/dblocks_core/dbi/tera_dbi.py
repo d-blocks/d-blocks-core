@@ -579,7 +579,7 @@ class TeraDBI(contract.AbstractDBI):
         order by 1,2
         """
         stmt = sa.text(sql).bindparams(
-            database_name=database_name, object_name=object_name
+            database_name=database_name, object_name=database_name
         )
         with self.engine.connect() as con:
             rows = [
