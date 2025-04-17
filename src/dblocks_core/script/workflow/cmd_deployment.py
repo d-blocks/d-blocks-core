@@ -195,7 +195,7 @@ def deploy_queue(
             logger.debug(f"skip: {chk}")
             continue
 
-        if (i + 1) % log_each == 1:
+        if (i + 1) % log_each == 0:
             logger.info(f"- table #{i+1}/{total_queue_length + 1}: {file.as_posix()}")
 
         object_name = file.stem
