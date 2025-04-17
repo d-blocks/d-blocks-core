@@ -573,9 +573,8 @@ class TeraDBI(contract.AbstractDBI):
             creatorName as creator_name,
             lastAlterName as last_alter_name
 
-        from dbc.tablesV
+        from dbc.databasesV
         where databaseName = :database_name
-            and tableName = :object_name
         order by 1,2
         """
         stmt = sa.text(sql).bindparams(
