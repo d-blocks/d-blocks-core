@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "d-blocks-core"
-version = "0.9.3.29"
+version = "0.9.3.30"
 description = ""
 authors = ["d-blocks-coder <d.blocks.coder@gmail.com>"]
 license = "MIT"
