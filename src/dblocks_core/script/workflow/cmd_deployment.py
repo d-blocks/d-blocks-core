@@ -65,7 +65,6 @@ def sort_ddl_files(file_paths):
         for idx, obj_type in enumerate(_TYPE_DEPLOYMENT_ORDER)
         if obj_type in fsystem.TYPE_TO_EXT
     }
-    print(ext_priority)
     # Step 2: Define sorting key function
     def sort_key(file_path):
         ext = "." + os.path.splitext(file_path)[1].lstrip('.')

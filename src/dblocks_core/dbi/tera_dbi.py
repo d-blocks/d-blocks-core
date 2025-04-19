@@ -633,7 +633,7 @@ class TeraDBI(contract.AbstractDBI):
         order by 1
         """
         stmt = sa.text(sql).bindparams(
-            role_name=profile_name
+            profile_name=profile_name
         )
         with self.engine.connect() as con:
             rows = [
