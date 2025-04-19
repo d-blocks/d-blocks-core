@@ -489,6 +489,7 @@ class TeraDBI(contract.AbstractDBI):
         Args:
             database_name (str): The name of the database containing the object.
             object_name (str): The name of the object to retrieve.
+            object_type (str): Object type - it drives metadata location we gather information
 
         Returns:
             meta_model.IdentifiedObject | None: The identified object, or None if not
@@ -501,9 +502,13 @@ class TeraDBI(contract.AbstractDBI):
         - Returns the identified object, or None if not found.
         """
 
-        # Exception for database object as it is obtained from different metadata table
+        # Exceptional objects that are not available in DBC.TablesV
         if object_type == meta_model.DATABASE:
-            return self.get_identified_object_for_db(database_name)
+            return self.get_identified_object_for_db(object_name)
+        if object_type == meta_model.ROLE:
+            return self.get_identified_object_for_role(object_name)
+        if object_type == meta_model.PROFILE:
+            return self.get_identified_object_for_profile(object_name)
 
         sql = """
         select
@@ -536,6 +541,111 @@ class TeraDBI(contract.AbstractDBI):
                     last_alter_name=(
                         row.last_alter_name.strip() if row.last_alter_name else None
                     ),
+                )
+                for row in con.execute(stmt).fetchall()
+            ]
+            if len(rows) == 0:
+                return None
+            return rows[0]
+
+    @translate_error()
+    def get_identified_object_for_role(
+        self,
+        role_name: str
+    ) -> meta_model.IdentifiedObject | None:
+        """
+        Retrieves an identified object representing role.
+
+        Args:
+            role_name (str): The name of the role.
+
+        Returns:
+            meta_model.IdentifiedObject | None: The identified object, or None if not
+                found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the object details from `dbc.databases`.
+        - Executes the query using the database engine.
+        - Maps the query result to a `meta_model.IdentifiedObject`.
+        - Returns the identified object, or None if not found.
+        """
+        sql = """
+        select
+            roleName as role_name,
+            createTimeStamp as create_datetime,
+            createUID as creator_name
+
+        from dbc.roles
+        where roleName = :role_name
+        order by 1
+        """
+        stmt = sa.text(sql).bindparams(
+            role_name=role_name
+        )
+        with self.engine.connect() as con:
+            rows = [
+                meta_model.IdentifiedObject(
+                    database_name="",
+                    object_name=role_name.strip(),
+                    object_type=meta_model.ROLE,
+                    platform_object_type="",
+                    create_datetime=row.create_datetime,
+                    last_alter_datetime=row.create_datetime,
+                    creator_name=row.creator_name.strip() if row.creator_name else None,
+                    last_alter_name=row.creator_name.strip() if row.creator_name else None,
+                )
+                for row in con.execute(stmt).fetchall()
+            ]
+            if len(rows) == 0:
+                return None
+            return rows[0]
+
+    @translate_error()
+    def get_identified_object_for_profile(
+        self,
+        profile_name: str
+    ) -> meta_model.IdentifiedObject | None:
+        """
+        Retrieves an identified object representing profile.
+
+        Args:
+            profile_name (str): The name of the profile.
+
+        Returns:
+            meta_model.IdentifiedObject | None: The identified object, or None if not
+                found.
+
+        Behavior:
+        - Constructs a SQL query to retrieve the object details from `dbc.databases`.
+        - Executes the query using the database engine.
+        - Maps the query result to a `meta_model.IdentifiedObject`.
+        - Returns the identified object, or None if not found.
+        """
+        sql = """
+        select
+            profileName as profile_name,
+            createTimeStamp as create_datetime,
+            lastAlterTimeStamp as last_alter_datetime,
+            createUID as creator_name,
+            lastAlterUID as last_alter_name
+        from dbc.profiles
+        where profileName = :profile_name
+        order by 1
+        """
+        stmt = sa.text(sql).bindparams(
+            role_name=profile_name
+        )
+        with self.engine.connect() as con:
+            rows = [
+                meta_model.IdentifiedObject(
+                    database_name="",
+                    object_name=profile_name.strip(),
+                    object_type=meta_model.PROFILE,
+                    platform_object_type="",
+                    create_datetime=row.create_datetime,
+                    last_alter_datetime=row.last_alter_datetime,
+                    creator_name=row.creator_name.strip() if row.creator_name else None,
+                    last_alter_name=row.last_alter_name.strip() if row.last_alter_name else None,
                 )
                 for row in con.execute(stmt).fetchall()
             ]

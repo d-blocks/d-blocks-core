@@ -1,4 +1,5 @@
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -23,7 +24,7 @@ RENAME_STRATEGY = "rename"
 IGNORE_STRATEGY = "ignore"
 SKIP_STRATEGY = "skip"
 #_DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
-_DO_NOT_DEPLOY = {}
+
 _DEPLOYMENT_STRATEGIES = [
     DROP_STRATEGY,
     RENAME_STRATEGY,
@@ -33,6 +34,47 @@ _DEPLOYMENT_STRATEGIES = [
 ]
 _DTTM_FMT = "%Y%m%d%H%M%S"
 
+# Collection is used to derive deployment order of single files based on their extensions. Notice, every extension
+# represents object type.
+_TYPE_DEPLOYMENT_ORDER = [
+    meta_model.ROLE,
+    meta_model.PROFILE,
+    meta_model.DATABASE,
+    meta_model.USER,
+    meta_model.AUTHORIZATION,
+    meta_model.TABLE,
+    meta_model.INDEX,
+    meta_model.JOIN_INDEX,
+    meta_model.VIEW,
+    meta_model.PROCEDURE,
+    meta_model.MACRO,
+    meta_model.TRIGGER,
+    meta_model.FUNCTION,
+    meta_model.TYPE,
+    meta_model.GENERIC_SQL,
+    meta_model.GENERIC_BTEQ,
+]
+
+# Sort file list based on file extensions that correspond to single object types. Notice order how we deploy
+# order types is given by _TYPE_DEPLOYMENT_ORDER. Finally, if two files correspond to same object type than we
+# prioritize this one that is nested higher in folder structure
+def sort_ddl_files(file_paths):
+    # Step 1: Build extension priority mapping
+    ext_priority = {
+        fsystem.TYPE_TO_EXT[obj_type]: idx
+        for idx, obj_type in enumerate(_TYPE_DEPLOYMENT_ORDER)
+        if obj_type in fsystem.TYPE_TO_EXT
+    }
+    print(ext_priority)
+    # Step 2: Define sorting key function
+    def sort_key(file_path):
+        ext = "." + os.path.splitext(file_path)[1].lstrip('.')
+        priority = ext_priority.get(ext, float('inf'))  # Unknown extensions go last
+        nesting_level = os.path.normpath(file_path).count(os.sep)
+        return priority, nesting_level
+
+    # Step 3: Sort and return files
+    return sorted(file_paths, key=sort_key)
 
 def deploy_env(
     deploy_dir: Path,
@@ -76,9 +118,9 @@ def deploy_env(
         for f in deploy_dir.rglob("*")
         if f.is_file()
         and f.suffix.lower() in fsystem.EXT_TO_TYPE
-        and f.suffix.lower() not in _DO_NOT_DEPLOY  # TODO: skip databases for now
     ]
-    queue.sort()
+    # We do sort based on object types
+    queue = sort_ddl_files(queue)
 
     # prep list of impacted databases
     databases = sorted({tgr.expand_statement(f.parent.stem) for f in queue})
