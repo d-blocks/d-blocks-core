@@ -149,8 +149,8 @@ def deploy_env(
     # - what is the conflict strategy
 
     # split the queue to tables and others
-    tables = [f for f in queue if f.suffix == fsystem.TABLE_SUFFIX]
-    others = [f for f in queue if f.suffix != fsystem.TABLE_SUFFIX]
+    #tables = [f for f in queue if f.suffix == fsystem.TABLE_SUFFIX]
+    #others = [f for f in queue if f.suffix != fsystem.TABLE_SUFFIX]
 
     # FIXME: check thal all databases exist
 
@@ -170,26 +170,26 @@ def deploy_env(
     failures: dict[str, meta_model.DeploymentFailure] = {}
 
     # deploy tables, the attempt is made only once, no dependencies are expected
-    deploy_queue(
-        tables,
-        ctx=ctx,
-        tgr=tgr,
-        ext=ext,
-        log_each=log_each,
-        total_queue_length=len(queue),
-        failures=failures,
-        if_exists=if_exists,
-        dry_run=dry_run,
-    )
+    #deploy_queue(
+    #    tables,
+    #    ctx=ctx,
+    #    tgr=tgr,
+    #    ext=ext,
+    #    log_each=log_each,
+    #    total_queue_length=len(queue),
+    #    failures=failures,
+    #    if_exists=if_exists,
+    #    dry_run=dry_run,
+    #)
 
     # deploy others
     # FIXME - predetermined number of waaves....
     deployed_cnt = -1
-    wave = 2
+    wave = 1
     while deployed_cnt != 0:
         logger.info(f"starting wave #{wave}")
         deployed_cnt = deploy_queue(
-            others,
+            queue,
             ctx=ctx,
             tgr=tgr,
             ext=ext,
