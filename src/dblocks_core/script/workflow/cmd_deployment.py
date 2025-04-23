@@ -241,7 +241,7 @@ def deploy_queue(
         if (i + 1) % log_each == 0:
             logger.info(f" script #{i+1}/{total_queue_length + 1}: {file.as_posix()}")
 
-        object_name = file.stem
+        object_name = tgr.expand_statement(file.stem)
         object_database = tgr.expand_statement(file.parent.stem)
 
         try:
