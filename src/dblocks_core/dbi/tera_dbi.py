@@ -74,8 +74,9 @@ _TABLEKIND_TO_TYPE = {
     "M": meta_model.MACRO,
     "G": meta_model.TRIGGER,
     "F": meta_model.FUNCTION,  # show function can cause err 5593 which we have to "survive"
-    "R": meta_model.FUNCTION,  # show function can cause err 5593 which we have to "survive"
+    "R": meta_model.FUNCTION,  #TODO: there various function types - see function mapping
     "A": meta_model.FUNCTION,  # can cause 3523: The user does not have any access to ...
+    "2": meta_model.FUNCTION_MAPPING,
     "U": meta_model.TYPE,  # can cause 6878: Show Type operation is not allowed on Internal type UDT
     "X": meta_model.AUTHORIZATION,
 }

@@ -50,6 +50,7 @@ _TYPE_DEPLOYMENT_ORDER = [
     meta_model.MACRO,
     meta_model.TRIGGER,
     meta_model.FUNCTION,
+    meta_model.FUNCTION_MAPPING,
     meta_model.TYPE,
     meta_model.GENERIC_SQL,
     meta_model.GENERIC_BTEQ,
