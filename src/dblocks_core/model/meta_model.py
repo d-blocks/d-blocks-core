@@ -29,6 +29,7 @@ TERADATA = "teradata"
 
 DATABASE_LOG_LEVEL = 15
 
+#TODO - add further function types - see FUNCTION_MAPPING
 # types of objects dbe can manage
 MANAGED_TYPES = [
     DATABASE,
@@ -43,6 +44,7 @@ MANAGED_TYPES = [
     ROLE,
     PROFILE,
     FUNCTION_MAPPING,
+    AUTHORIZATION,
 ]
 
 
