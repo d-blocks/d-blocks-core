@@ -9,6 +9,7 @@ from attrs import define, field
 from dblocks_core.model import global_converter  # noqa: F401
 
 DATABASE = "DATABASE"
+USER = "USER"
 TABLE = "TABLE"
 VIEW = "VIEW"
 PROCEDURE = "PROCEDURE"
@@ -18,16 +19,21 @@ INDEX = "INDEX"
 MACRO = "MACRO"
 TRIGGER = "TRIGGER"
 FUNCTION = "FUNCTION"
+FUNCTION_MAPPING = "FUNCTION MAPPING"
 TYPE = "TYPE"
 AUTHORIZATION = "AUTHORIZATION"
+ROLE = "ROLE"
+PROFILE = "PROFILE"
 
 TERADATA = "teradata"
 
 DATABASE_LOG_LEVEL = 15
 
-# typoes of objects dbe can manage
+#TODO - add further function types - see FUNCTION_MAPPING
+# types of objects dbe can manage
 MANAGED_TYPES = [
     DATABASE,
+    USER,
     TABLE,
     VIEW,
     PROCEDURE,
@@ -35,6 +41,10 @@ MANAGED_TYPES = [
     INDEX,
     TRIGGER,
     FUNCTION,
+    ROLE,
+    PROFILE,
+    FUNCTION_MAPPING,
+    AUTHORIZATION,
 ]
 
 

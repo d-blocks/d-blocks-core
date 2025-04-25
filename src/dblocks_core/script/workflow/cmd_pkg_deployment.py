@@ -247,7 +247,7 @@ def deploy_script_with_conflict_strategy(
 
     if check_if_exists:
         logger.debug(f"checking if the object exists: {object_database}.{object_name}")
-        obj = ext.get_identified_object(object_database, object_name)
+        obj = ext.get_identified_object(object_database, object_name, object_type)
         logger.debug(obj)
 
     # implement conflict strategy
