@@ -208,6 +208,13 @@ def run_extraction(
         # next iteration
         prev_db = obj.database_name
 
+    # delete droped objects
+    wrt.drop_nonex_objects(
+        existing_objects=env_data.all_objects,
+        tagged_databases=env_data.all_databases,
+        databases_in_scope=env_data.all_databases,
+    )
+
     # commit
     if repo is not None:
         if not repo.is_clean():
