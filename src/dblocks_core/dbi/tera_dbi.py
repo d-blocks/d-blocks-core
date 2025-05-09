@@ -180,6 +180,7 @@ def translate_error():
             raise
 
         if err_code == ERR_CODE_DOES_NOT_EXIST:
+            logger.info("Code does not exist")
             logger.debug(cause)
             raise exc.DBObjectDoesNotExist(err_desc) from err
 
