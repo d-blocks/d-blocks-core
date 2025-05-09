@@ -12,7 +12,7 @@ def scan_env(
     env: config_model.EnvironParameters,
     ext: AbstractDBI,
     *,
-    filter_databases: str | None = None,
+    filter_databases_like: str | None = None,
     filter_names: str | None = None,
     filter_creator: str | None = None,
     filter_since_dt: datetime | None = None,
@@ -23,7 +23,7 @@ def scan_env(
     Args:
         env (config_model.EnvironParameters): Environment parameters.
         ext (AbstractDBI): Database interface for extraction.
-        filter_databases (str | None): Optional filter for database names.
+        filter_databases (str | None): Optional filter for database names (mask of the database)
         filter_names (str | None): Optional filter for object names.
         filter_creator (str | None): Optional filter for creator names.
         filter_since_dt (datetime | None): Optional filter for changes since a specific datetime.
@@ -33,9 +33,9 @@ def scan_env(
     """
     # prep db filter
     re_database_filter: re.Pattern | None = None
-    if filter_databases:
-        filter_databases = filter_databases.strip().replace("%", ".*")
-        re_database_filter = re.compile(filter_databases, re.I)
+    if filter_databases_like:
+        filter_databases_like = filter_databases_like.strip().replace("%", ".*")
+        re_database_filter = re.compile(filter_databases_like, re.I)
         logger.info(f"database filter: {re_database_filter}")
 
     # prep tablename filter
