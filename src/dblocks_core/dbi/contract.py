@@ -169,3 +169,17 @@ class AbstractDBI(ABC):
         Change default database
         """
         ...
+
+    @abstractmethod
+    def get_full_definition(self, database: str, object: str) -> list[str] | None:
+        """
+        Retrieves the full definition of a database object.
+
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table.
+
+        Returns:
+            str: The full definition of the object.
+        """
+        ...
