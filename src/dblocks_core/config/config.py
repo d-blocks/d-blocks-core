@@ -52,6 +52,8 @@ REDACTED = "<redacted>"
 ENVIRON_PREFIX = "DBLOCKS_"
 EXPECTED_CONFIG_VERSION = "1.0.0"
 
+_LOGGING_WAS_SET = False
+
 
 def __iter_namespace(ns_pkg):
     """
@@ -352,7 +354,12 @@ def remove_logger_sink(id_: int):
 
 
 def setup_logger(logconf: config_model.LoggingConfig | None):
+    global _LOGGING_WAS_SET
     if not logconf:
+        return
+
+    # do not add the same sink twice
+    if _LOGGING_WAS_SET:
         return
 
     # default sink is guaranteed to have the index 0
@@ -393,14 +400,7 @@ def setup_logger(logconf: config_model.LoggingConfig | None):
 
     # intercept calls to stdlib logging
     logging.basicConfig(handlers=[_LoggingInterceptHandler()], level=0, force=True)
-
-    # FIXME: we want to get the version somehow, but this is far from good
-    # log information about version of the tool
-    # try:
-    #     version = metadata.version("dblocks_core")
-    # except metadata.PackageNotFoundError:
-    #     version = "<version info not available>"
-    # logger.info(f"dbe version: {version}")
+    _LOGGING_WAS_SET = True
 
 
 def _censore_keys(
