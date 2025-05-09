@@ -118,6 +118,12 @@ def env_extract(
             "The '%' sign means 'any number of any characters'."
         ),
     ] = None,
+    from_file: Annotated[
+        str | None,
+        typer.Option(
+            help="Path to the file with the list of objetcs - each object on one line."
+        ),
+    ] = None,
 ):
     """
     Extraction of the database based on an environment name. The extraction can be
@@ -201,6 +207,7 @@ def env_extract(
             filter_names=filter_names,
             filter_creator=filter_creator,
             plugins=plugins,
+            from_file=from_file,
         )
     ctx.done()
 
@@ -394,7 +401,15 @@ def pkg_deploy(
 @app.command()
 def cfg_check():
     """Checks configuration files, without actually doing 'anything'."""
-    cfg = config.load_config()
+    try:
+        cfg = config.load_config()
+    except Exception:
+        logger.error("failed to load config")
+        logger.error(f"config locations: {config.CONFIG_LOCATIONS}")
+        raise
+
+    for config_location in config.CONFIG_LOCATIONS:
+        logger.info(f"- config location: {config_location}")
 
     # give me ALL plugins
     all_plugins = config.plugin_instances(cfg, class_=None)
