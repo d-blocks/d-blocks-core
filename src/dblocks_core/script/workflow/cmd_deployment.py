@@ -1,5 +1,4 @@
 import sys
-import os
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -23,7 +22,7 @@ DROP_STRATEGY = "drop"
 RENAME_STRATEGY = "rename"
 IGNORE_STRATEGY = "ignore"
 SKIP_STRATEGY = "skip"
-#_DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
+# _DO_NOT_DEPLOY = {fsystem.DATABASE_SUFFIX}  # TODO: skip databases for now
 
 _DEPLOYMENT_STRATEGIES = [
     DROP_STRATEGY,
@@ -56,25 +55,28 @@ _TYPE_DEPLOYMENT_ORDER = [
     meta_model.GENERIC_BTEQ,
 ]
 
+
 # Sort file list based on file extensions that correspond to single object types. Notice order how we deploy
 # order types is given by _TYPE_DEPLOYMENT_ORDER. Finally, if two files correspond to same object type than we
 # prioritize this one that is nested higher in folder structure
-def sort_ddl_files(file_paths):
+def sort_ddl_files(file_paths: list[Path]):
     # Step 1: Build extension priority mapping
     ext_priority = {
         fsystem.TYPE_TO_EXT[obj_type]: idx
         for idx, obj_type in enumerate(_TYPE_DEPLOYMENT_ORDER)
         if obj_type in fsystem.TYPE_TO_EXT
     }
+
     # Step 2: Define sorting key function
-    def sort_key(file_path):
-        ext = "." + os.path.splitext(file_path)[1].lstrip('.')
-        priority = ext_priority.get(ext, float('inf'))  # Unknown extensions go last
-        nesting_level = os.path.normpath(file_path).count(os.sep)
+    def sort_key(file_path: Path):
+        ext = file_path.suffix
+        priority = ext_priority.get(ext, float("inf"))  # Unknown extensions go last
+        nesting_level = len(file_path.parts) - 1
         return priority, nesting_level
 
     # Step 3: Sort and return files
     return sorted(file_paths, key=sort_key)
+
 
 def deploy_env(
     deploy_dir: Path,
@@ -116,8 +118,7 @@ def deploy_env(
     queue = [
         f
         for f in deploy_dir.rglob("*")
-        if f.is_file()
-        and f.suffix.lower() in fsystem.EXT_TO_TYPE
+        if f.is_file() and f.suffix.lower() in fsystem.EXT_TO_TYPE
     ]
     # We do sort based on object types
     queue = sort_ddl_files(queue)
@@ -149,8 +150,8 @@ def deploy_env(
     # - what is the conflict strategy
 
     # split the queue to tables and others
-    #tables = [f for f in queue if f.suffix == fsystem.TABLE_SUFFIX]
-    #others = [f for f in queue if f.suffix != fsystem.TABLE_SUFFIX]
+    # tables = [f for f in queue if f.suffix == fsystem.TABLE_SUFFIX]
+    # others = [f for f in queue if f.suffix != fsystem.TABLE_SUFFIX]
 
     # FIXME: check thal all databases exist
 
@@ -170,7 +171,7 @@ def deploy_env(
     failures: dict[str, meta_model.DeploymentFailure] = {}
 
     # deploy tables, the attempt is made only once, no dependencies are expected
-    #deploy_queue(
+    # deploy_queue(
     #    tables,
     #    ctx=ctx,
     #    tgr=tgr,
@@ -180,7 +181,7 @@ def deploy_env(
     #    failures=failures,
     #    if_exists=if_exists,
     #    dry_run=dry_run,
-    #)
+    # )
 
     # deploy others
     # FIXME - predetermined number of waaves....
@@ -233,6 +234,8 @@ def deploy_queue(
     """
     deployed_cnt = 0
 
+    default_db = None
+
     for i, file in enumerate(files):
         chk = file.as_posix()
         if ctx.get_checkpoint(chk):
@@ -244,6 +247,13 @@ def deploy_queue(
 
         object_name = tgr.expand_statement(file.stem)
         object_database = tgr.expand_statement(file.parent.stem)
+
+        # switch to the database
+        if object_database is not None and default_db != object_database:
+            # switch to the database
+            logger.info(f"change default database: {object_database}")
+            default_db = object_database
+            ext.change_database(default_db)
 
         try:
             # deploy contents of the file
@@ -535,6 +545,9 @@ def _confirm_deployment(
         ("we target ...", str(databases[:5]), "only first 5 databases"),
     ):
         params.add_row(k, v, cmt)
+
+    if ctx.is_in_progress():
+        params.add_row("This is a restart job!", "")
 
     # printout of params
     if ctx_len > 0:
