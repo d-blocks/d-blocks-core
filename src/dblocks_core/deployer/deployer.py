@@ -33,7 +33,7 @@ def deploy_dir(
                 logger.warning(f"skipping file: {file.file.name}")
                 continue
 
-            # deefault db ...
+            # default db ...
             if default_db is not None or file.default_db is not None:
                 if default_db != file.default_db:
                     default_db = file.default_db

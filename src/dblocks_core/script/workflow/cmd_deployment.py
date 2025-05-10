@@ -275,8 +275,9 @@ def deploy_queue(
 
         # all other database related errors are mitigated if possible
         # label the file as failed and store error message on the context
-        except exc.DBStatementError as err:
+        except exc.DBStatementError or exc.DBObjectDoesNotExist as err:
             logger.error(f"{chk}: {err.message}")
+            logger.info("Object missing error")
             ctx[chk] = err.message
             fail = meta_model.DeploymentFailure(
                 path=file.as_posix(),
@@ -284,6 +285,7 @@ def deploy_queue(
                 exc_message=err.message,
             )
             failures[fail.path] = fail  # type: ignore
+        logger.info("Continue")
 
     return deployed_cnt
 
