@@ -96,7 +96,7 @@ def env_extract(
             help="Countdown untill start, after confirmation, "
             "if full extraction was requested."
         ),
-    ] = 10,
+    ] = 3,
     filter_databases: Annotated[
         str | None,
         typer.Option(
@@ -118,12 +118,12 @@ def env_extract(
             "The '%' sign means 'any number of any characters'."
         ),
     ] = None,
-    # from_file: Annotated[
-    #     str | None,
-    #     typer.Option(
-    #         help="Path to the file with the list of objetcs - each object on one line."
-    #     ),
-    # ] = None,
+    from_file: Annotated[
+        str | None,
+        typer.Option(
+            help="Path to the file with the list of objetcs - each object on one line."
+        ),
+    ] = None,
 ):
     """
     Extraction of the database based on an environment name. The extraction can be
@@ -135,12 +135,6 @@ def env_extract(
     repo = git.repo_factory(raise_on_error=True)
     if repo is not None and repo.is_dirty():
         logger.warning("Repo is not clean!")
-        console.print(
-            "Repo is not clean!\n"
-            "Extraction will not run, unless it is continuation of previously "
-            "unfinished process.",
-            style="bold red",
-        )
 
     # attempt to get information about the history length
     since_dt: None | datetime = None
@@ -157,7 +151,7 @@ def env_extract(
         logger.info(
             "extract objects changed after: " + since_dt.strftime("%Y-%m-%d %H:%M:%S")
         )
-    elif not assume_yes:
+    elif not (assume_yes or from_file is not None):
         really = Prompt.ask(
             "This process has a few risks:"
             "\n- it can run for a long time and could leave the repo in incosistent "
@@ -207,7 +201,7 @@ def env_extract(
             filter_names=filter_names,
             filter_creator=filter_creator,
             plugins=plugins,
-            # from_file=from_file,
+            from_file=from_file,
         )
     ctx.done()
 

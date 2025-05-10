@@ -28,6 +28,7 @@ def run_extraction(
     filter_databases: str | None = None,
     filter_names: str | None = None,
     filter_creator: str | None = None,
+    from_file: str | None = None,
     # behaviour
     log_each: int = 5,
     commit: bool = False,
@@ -52,7 +53,17 @@ def run_extraction(
     Returns:
         None
     """
-    # prep git
+    # Assume that at the end we are to drop all objects that no longer exist
+    # We want to have the ability to switch this off, because - for example - when extracting only specified objects,
+    # we do not probe the fuill scope of the database, hence deletion of "dropped objects" would cause harm to the metadata.
+    drop_nonex_objects = True
+    filter_from_file = get_filter_from_file(from_file)
+    if filter_from_file is not None:
+        drop_nonex_objects = False
+
+    # 1. Check if a Git branch is configured in the environment (`env.git_branch`).
+    # 2. If the operation is not a restart (`ctx.is_in_progress()` is False), it ensures the Git repository is clean.
+    # 3. Checkout the branch specified in config
     if env.git_branch is not None:
         if repo is None:
             message = "\n".join(
@@ -65,7 +76,7 @@ def run_extraction(
             raise exc.DOperationsError(message)
 
         # if this is not a restart operation, assume that the repo must be clean
-        if not ctx.is_in_progress():
+        if not ctx.is_in_progress() and filter_from_file is None:
             logger.info("check if repo is clean")
             if repo.is_dirty():
                 raise exc.DOperationsError(
@@ -77,16 +88,13 @@ def run_extraction(
                     "\n- commit everyhing, commit selectively (git add --all && "
                     "git commit)"
                 )
-        else:
-            logger.warning("restart operation, do NOT assume repo is clean")
 
         # assume we are in the correct branch
         repo.checkout(env.git_branch, missing_ok=True)
 
-    # prep plugins
+    # Prepare list of plugins that can be used to modify the scope of the extraction.
     if plugins is None:
         plugins = []
-
     scope_plugins: list[plugin_model._PluginInstance] = []
     for plugin in plugins:
         if isinstance(plugin.instance, plugin_model.PluginExtractIsInScope):
@@ -101,6 +109,8 @@ def run_extraction(
     env.writer.target_dir.mkdir(exist_ok=True, parents=True)
 
     # get environment data from context, if at all possible
+    # This connects to the database and lists all objects from all databases that are configured and in scope.
+    # See the dbi.scan_env function for more details.
     ENV_DATA = "ENV_DATA"
     env_data: meta_model.ListedEnv
     try:
@@ -113,12 +123,12 @@ def run_extraction(
             tagging_strip_db_with_no_rules=env.tagging_strip_db_with_no_rules,
         )
         tgr.build(databases=[db.database_name for db in env_data.all_databases])
-
     except KeyError:
         # scan env; this checks definition of objects for all configured databases, however, we
         # respect various filters used in the call to this function
         # this means we will not scan filtered databases !!!
         logger.info("scanning environment")
+        # this is potentially very, very long operation, as it scans all databases
         tgr, env_data = dbi.scan_env(
             env=env,
             ext=ext,
@@ -126,9 +136,11 @@ def run_extraction(
             filter_names=filter_names,
             filter_creator=filter_creator,
             filter_since_dt=filter_since_dt,
+            only_databases=filter_from_file.databases if filter_from_file else None,
         )
         ctx[ENV_DATA] = cattrs.unstructure(env_data)
 
+    # prepare translation dictionaries, the first is used to tag the database,
     db_to_tag = {
         d.database_name.upper(): d.database_tag for d in env_data.all_databases
     }
@@ -136,12 +148,12 @@ def run_extraction(
         d.database_name.upper(): d.parent_tags_in_scope for d in env_data.all_databases
     }
 
-    # extract
+    # prep for extractoin
     started_when = datetime.now()
     db, prev_db = None, None
     in_scope = [obj for obj in env_data.all_objects if obj.in_scope]
 
-    # scope plugins
+    # execute scope plugins
     if scope_plugins:
         logger.info("filtering objects in scope, using installed plugins")
         _in_scope = []
@@ -155,7 +167,22 @@ def run_extraction(
                 _in_scope.append(obj)
         in_scope = _in_scope
 
-    logger.info(f"total lenght of the queue is: {len(in_scope)}")
+    # further limit the scope based on filter from file
+    if filter_from_file is not None:
+        logger.info("filtering objects in scope, using filter from file")
+        for obj in in_scope:
+            database, obj_name = obj.database_name.upper(), obj.object_name.upper()
+            try:
+                if obj_name not in filter_from_file.objects[database]:
+                    obj.in_scope = False
+            except KeyError:
+                obj.in_scope = False
+
+    # run the extraction - this loops through all objects in scope
+    logger.info(
+        f"total lenght of the queue is: {len([ e for e in in_scope if e.in_scope])}"
+    )
+
     for i, obj in enumerate(in_scope, start=1):
         db = obj.database_name
         if not obj.in_scope:
@@ -209,20 +236,23 @@ def run_extraction(
         prev_db = obj.database_name
 
     # delete droped objects
-    wrt.drop_nonex_objects(
-        existing_objects=env_data.all_objects,
-        tagged_databases=env_data.all_databases,
-        databases_in_scope=env_data.all_databases,
-    )
+    if drop_nonex_objects:
+        wrt.drop_nonex_objects(
+            existing_objects=env_data.all_objects,
+            tagged_databases=env_data.all_databases,
+            databases_in_scope=env_data.all_databases,
+        )
+        if repo is not None:
+            if not repo.is_clean():
+                if commit:
+                    repo.add()
+                    repo.commit(f"dbe env-extract {env_name}: delete dropped objects")
+                else:
+                    logger.warning("Please, commit your changes.")
 
-    # commit
-    if repo is not None:
-        if not repo.is_clean():
-            if commit:
-                repo.add()
-                repo.commit(f"dbe env-extract {env_name}: delete dropped objects")
-            else:
-                logger.warning("Please, commit your changes.")
+    # final commit
+    if repo is not None and not repo.is_clean():
+        logger.warning("Repo si not clean, please, commit your changes.")
 
 
 @frozen
@@ -231,9 +261,23 @@ class _FilterFromFile:
     objects: dict[str, list[str]]
 
 
-# FIXME: incomplete, we plan to use this in a new command that dumps only selected objects (does not do a full scan)
-# FIXME: extension of the run_extraction seems too complex, as it also deletes objects ... it HAS to scan the whole env!
-def _objects_from_file(from_file: str) -> _FilterFromFile | None:
+def get_filter_from_file(from_file: str) -> _FilterFromFile | None:
+    """
+    Parses a file containing a list of database objects and returns a structured filter.
+
+    This function reads a file where each line specifies a database and an object (e.g., "DATABASE.TABLE").
+    It processes the file to create a filter that can be used to limit the scope of operations to specific databases and objects.
+
+    Args:
+        from_file (str): Path to the file containing the list of database objects. Each line should be in the format "DATABASE.TABLE".
+                         Lines starting with "#" are treated as comments and ignored.
+
+    Returns:
+        _FilterFromFile | None: A structured filter containing:
+            - `databases` (list[str]): A sorted list of unique database names.
+            - `objects` (dict[str, list[str]]): A dictionary mapping each database to a list of its objects.
+          Returns `None` if `from_file` is not provided.
+    """
     if from_file is None:
         return None
 
@@ -241,18 +285,21 @@ def _objects_from_file(from_file: str) -> _FilterFromFile | None:
     objects = dict()
     total_count = 0
 
-    logger.info(f"reading objects from file: {from_file}")
+    logger.info(f"reading list of objects from file: {from_file}")
     with open(from_file, "r", encoding="utf-8") as f:
-        for line in f:
+        for i, line in enumerate(f):
+            # skip comments
+            if line.startswith("#"):
+                continue
             line = line.strip().upper()
             elements = line.split(".")
             if len(elements) != 2:
                 logger.warning(
-                    f"line '{line}' does not contain exactly two elements, skipping"
+                    f"line #{i} does not contain exactly two elements, skipping: '{line}'"
                 )
                 continue
 
-            database, table = elements
+            database, table = (e.upper() for e in elements)
 
             if database not in databases:
                 databases.add(database)

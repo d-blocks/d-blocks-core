@@ -1,3 +1,21 @@
+- [Feature: Environment Extraction](#feature-environment-extraction)
+  - [Overview](#overview)
+  - [Use cases](#use-cases)
+    - [**Initializing Master Branch from Production**](#initializing-master-branch-from-production)
+    - [**Developer Support During Development**](#developer-support-during-development)
+    - [**Monitoring Hotfixes in Production**](#monitoring-hotfixes-in-production)
+    - [**Cloning an Existing Environment**](#cloning-an-existing-environment)
+  - [Usage](#usage)
+    - [Example: Extracting a Production Database](#example-extracting-a-production-database)
+  - [Options](#options)
+    - [**1. Extracting Incremental vs. Full Data**](#1-extracting-incremental-vs-full-data)
+    - [**2. Extract only selected objects**](#2-extract-only-selected-objects)
+    - [**3. Skipping Confirmation Prompts**](#3-skipping-confirmation-prompts)
+    - [**4. Auto-Commit Changes**](#4-auto-commit-changes)
+    - [**4. Filtering Specific Objects**](#4-filtering-specific-objects)
+    - [**5. Delayed Extraction with Countdown**](#5-delayed-extraction-with-countdown)
+  - [Next Steps](#next-steps)
+
 # Feature: Environment Extraction
 
 ## Overview
@@ -72,7 +90,29 @@ Accepted values for `--since`:
 - `commit` → Extract since the last commit.
 - `1d`, `2w`, `3m` → Extract since a specific duration (days, weeks, months).
 
-### **2\. Skipping Confirmation Prompts**
+### **2\. Extract only selected objects**
+
+Let's say that you need to quickly get full definition of a few objects from databases configured in your environment.
+
+First, you prepare list of the objects, and store them in a simple text file.
+
+For example, you prepare the following file: `scope.txt`
+
+```bash
+# contents of the scope.txt
+tgt.party
+tgt.asset
+stg.source_table
+```
+
+You then execute the following command:
+
+```bash
+d-bee env-extract production --from-file
+```
+
+
+### **3\. Skipping Confirmation Prompts**
 
 To bypass interactive confirmation prompts, use:
 
@@ -80,7 +120,7 @@ To bypass interactive confirmation prompts, use:
 d-bee env-extract production --assume-yes
 ```
 
-### **3\. Auto-Commit Changes**
+### **4\. Auto-Commit Changes**
 
 By default, extracted changes are **committed to Git** automatically. To disable this:
 
