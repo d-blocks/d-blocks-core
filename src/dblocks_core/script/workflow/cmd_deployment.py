@@ -283,6 +283,10 @@ def deploy_queue(
         except exc.DBCannotConnect:
             raise
 
+        # errors that state that the object does not exist - for example, view over another view - are reported and skipped
+        except exc.DBObjectDoesNotExist as err:
+            logger.error(err)
+
         # all other database related errors are mitigated if possible
         # label the file as failed and store error message on the context
         except exc.DBStatementError or exc.DBObjectDoesNotExist as err:
