@@ -108,7 +108,7 @@ stg.source_table
 You then execute the following command:
 
 ```bash
-d-bee env-extract production --from-file
+d-bee env-extract production --from-file scope.txt
 ```
 
 
