@@ -1,3 +1,13 @@
+- [Configuration Guide for d-bee](#configuration-guide-for-d-bee)
+  - [Overview](#overview)
+  - [Configuration Files](#configuration-files)
+  - [Defining Environments](#defining-environments)
+    - [Managing Sensitive Information](#managing-sensitive-information)
+  - [Advanced Configuration Options](#advanced-configuration-options)
+    - [Logging Settings](#logging-settings)
+    - [Package Management](#package-management)
+  - [Testing Your Configuration](#testing-your-configuration)
+
 # Configuration Guide for d-bee
 
 ## Overview

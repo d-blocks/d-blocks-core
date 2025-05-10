@@ -43,7 +43,7 @@ Before installing d-blocks, ensure you have the following:
 ### **2. Installation**
 Install d-blocks-core using pip:
 ```bash
-pip install d-blocks-core
+pip install -U d-blocks-core
 ```
 
 ### **3. Clone Demo Repository**
