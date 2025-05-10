@@ -74,7 +74,7 @@ _TABLEKIND_TO_TYPE = {
     "M": meta_model.MACRO,
     "G": meta_model.TRIGGER,
     "F": meta_model.FUNCTION,  # show function can cause err 5593 which we have to "survive"
-    "R": meta_model.FUNCTION,  #TODO: there various function types - see function mapping
+    "R": meta_model.FUNCTION,  # TODO: there various function types - see function mapping
     "A": meta_model.FUNCTION,  # can cause 3523: The user does not have any access to ...
     "2": meta_model.FUNCTION_MAPPING,
     "U": meta_model.TYPE,  # can cause 6878: Show Type operation is not allowed on Internal type UDT
@@ -553,7 +553,7 @@ class TeraDBI(contract.AbstractDBI):
     @translate_error()
     def get_identified_object_for_role(
         self,
-        role_name: str
+        role_name: str,
     ) -> meta_model.IdentifiedObject | None:
         """
         Retrieves an identified object representing role.
@@ -581,9 +581,7 @@ class TeraDBI(contract.AbstractDBI):
         where roleName = :role_name
         order by 1
         """
-        stmt = sa.text(sql).bindparams(
-            role_name=role_name
-        )
+        stmt = sa.text(sql).bindparams(role_name=role_name)
         with self.engine.connect() as con:
             rows = [
                 meta_model.IdentifiedObject(
@@ -594,7 +592,9 @@ class TeraDBI(contract.AbstractDBI):
                     create_datetime=row.create_datetime,
                     last_alter_datetime=row.create_datetime,
                     creator_name=row.creator_name.strip() if row.creator_name else None,
-                    last_alter_name=row.creator_name.strip() if row.creator_name else None,
+                    last_alter_name=(
+                        row.creator_name.strip() if row.creator_name else None
+                    ),
                 )
                 for row in con.execute(stmt).fetchall()
             ]
@@ -605,7 +605,7 @@ class TeraDBI(contract.AbstractDBI):
     @translate_error()
     def get_identified_object_for_profile(
         self,
-        profile_name: str
+        profile_name: str,
     ) -> meta_model.IdentifiedObject | None:
         """
         Retrieves an identified object representing profile.
@@ -634,9 +634,7 @@ class TeraDBI(contract.AbstractDBI):
         where profileName = :profile_name
         order by 1
         """
-        stmt = sa.text(sql).bindparams(
-            profile_name=profile_name
-        )
+        stmt = sa.text(sql).bindparams(profile_name=profile_name)
         with self.engine.connect() as con:
             rows = [
                 meta_model.IdentifiedObject(
@@ -647,7 +645,9 @@ class TeraDBI(contract.AbstractDBI):
                     create_datetime=row.create_datetime,
                     last_alter_datetime=row.last_alter_datetime,
                     creator_name=row.creator_name.strip() if row.creator_name else None,
-                    last_alter_name=row.last_alter_name.strip() if row.last_alter_name else None,
+                    last_alter_name=(
+                        row.last_alter_name.strip() if row.last_alter_name else None
+                    ),
                 )
                 for row in con.execute(stmt).fetchall()
             ]
@@ -658,7 +658,7 @@ class TeraDBI(contract.AbstractDBI):
     @translate_error()
     def get_identified_object_for_db(
         self,
-        database_name: str
+        database_name: str,
     ) -> meta_model.IdentifiedObject | None:
         """
         Retrieves an identified object representing database.
@@ -689,9 +689,7 @@ class TeraDBI(contract.AbstractDBI):
         where databaseName = :database_name
         order by 1,2
         """
-        stmt = sa.text(sql).bindparams(
-            database_name=database_name
-        )
+        stmt = sa.text(sql).bindparams(database_name=database_name)
         with self.engine.connect() as con:
             rows = [
                 meta_model.IdentifiedObject(
@@ -1187,6 +1185,56 @@ class TeraDBI(contract.AbstractDBI):
             stmt = f"database {database_name};"
             logger.log(LOG_LEVEL_NAME, _LOG_SEPARATOR + stmt + _LOG_SEPARATOR)
             con.exec_driver_sql(stmt)
+
+    def get_full_definition(self, database: str, object: str) -> list[str] | None:
+        """
+        Retrieves the full definition of a database object.
+
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table.
+
+        Returns:
+            str: The full definition of the object.
+        """
+        identified_object = self.get_identified_object(
+            database_name=database,
+            object_name=object,
+            object_type=None,
+        )
+        if not identified_object:
+            return None
+        object = self.get_described_object(identified_object)
+        if not object:
+            return None
+
+        statements = []
+        statements = []
+        if object.basic_definition:
+            statements.append(object.basic_definition)
+
+        if object.object_comment_ddl:
+            statements.append(f"\n{object.object_comment_ddl}")
+
+        separate_stats = True
+        for i, detail in enumerate(object.additional_details):
+            # na prvním řádku chceme mít dvouřádkový odskok
+            if i == 0:
+                statements.append("\n")
+
+            if isinstance(detail, meta_model.TableStatistic):
+                # na první statistice chceme mít prázdný řádek nahoře
+                if separate_stats:
+                    statements.append("\n")
+                    separate_stats = False
+                statements.append(detail.ddl_statement)
+            elif isinstance(detail, meta_model.ColumnDescription):
+                statements.append(detail.ddl_statement)
+            else:
+                msg = f"{detail=}\n{object=}"
+                raise NotImplementedError(msg)
+
+        return statements
 
 
 # dbc.tablesV.tableKind: https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/Data-Dictionary/View-Column-Values/TableKind-Column

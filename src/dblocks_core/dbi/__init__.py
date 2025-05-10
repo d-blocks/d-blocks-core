@@ -26,6 +26,7 @@ class InitState:
     engine: sa.Engine
     config: config_model.Config
     logger: loguru.Logger
+    dbi: AbstractDBI
 
 
 def init(
@@ -58,6 +59,8 @@ def init(
     Returns: InitState, where
         engine (sqlalchemy.Engine): database engine
         config (config_model.Config): the configuration
+        logger (loguru.Logger): the logger
+        dbi (AbstractDBI): the database interface
     """
     cfg = __load_config()
     engine = create_engine(
@@ -69,10 +72,12 @@ def init(
         echo=echo,
         max_overflow=max_overflow,
     )
+    ext = dbi_factory(cfg, environment)
     return InitState(
         engine=engine,
         config=cfg,
         logger=logger,
+        dbi=ext,
     )
 
 

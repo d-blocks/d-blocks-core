@@ -1,4 +1,15 @@
-## Management Summary
+- [Management Summary](#management-summary)
+- [Feature: Quality of Life Improvements for Jupyter](#feature-quality-of-life-improvements-for-jupyter)
+  - [Overview](#overview)
+  - [Verbosity of Connection Definition](#verbosity-of-connection-definition)
+  - [Error Handling: Hard to Identify the Problem Quickly](#error-handling-hard-to-identify-the-problem-quickly)
+  - [SQLAlchemy Support](#sqlalchemy-support)
+  - [A Better Approach](#a-better-approach)
+  - [Checkpoints: Prevent Redundant Execution](#checkpoints-prevent-redundant-execution)
+  - [Get the full definition of an object](#get-the-full-definition-of-an-object)
+  - [Finishing the Context](#finishing-the-context)
+
+# Management Summary
 
 This feature introduces several quality-of-life improvements for working with Teradata in Python, particularly in Jupyter notebooks. The key challenges addressed include:
 
@@ -9,13 +20,13 @@ This feature introduces several quality-of-life improvements for working with Te
 
 These improvements significantly enhance the user experience when using Teradata in Jupyter notebooks.
 
-## Feature: Quality of Life Improvements for Jupyter
+# Feature: Quality of Life Improvements for Jupyter
 
-### Overview
+## Overview
 
 Whenever I work with Teradata in a Python script or a Jupyter notebook, I lack a simple mechanism to connect to a specified environment using a given user.
 
-The process isn’t complicated—it just requires importing a few libraries and writing a few lines of code:
+The process isn't complicated--it just requires importing a few libraries and writing a few lines of code:
 
 ```python
 import teradatasql as td
@@ -38,32 +49,32 @@ with td.connect(**CONNECT_PARAMS) as con:
 
 However, there are a few problems with this approach:
 
-### Verbosity of Connection Definition
+## Verbosity of Connection Definition
 
-I work with Teradata **a lot**, but I spend most of my time in SQL clients like DBeaver. Unfortunately, I don’t always remember the parameter names for the connection definition and have to look them up in the documentation every time.
+I work with Teradata **a lot**, but I spend most of my time in SQL clients like DBeaver. Unfortunately, I don't always remember the parameter names for the connection definition and have to look them up in the documentation every time.
 
-### Error Handling: Hard to Identify the Problem Quickly
+## Error Handling: Hard to Identify the Problem Quickly
 
 When an error occurs, Jupyter displays a long and verbose traceback. For example, the above snippet is invalid, but Jupyter spits out the stack trace.
-
 
 - The error message is buried in a long, **long** stack trace.
 - Jupyter hides the most important part: the actual error reported by the database.
 - There is no indication of which query caused the error.
 
-### SQLAlchemy Support
+## SQLAlchemy Support
 
-I prefer using SQLAlchemy, but if I don’t always remember the `teradatasql` connection parameters, forming a valid SQLAlchemy connection string is even harder. I need a simple way to initialize a connection without remembering every detail.
+I prefer using SQLAlchemy, but if I don't always remember the `teradatasql` connection parameters, forming a valid SQLAlchemy connection string is even harder. I need a simple way to initialize a connection without remembering every detail.
 
-### A Better Approach
+## A Better Approach
 
 Now, I can write something like this:
 
 ```python
-import dblocks_core as dbe
+import dblocks_core
 import sqlalchemy as sa
 
-engine = dbe.init("prod").engine
+dbe = dblocks_core.init("prod")
+engine = dbe.engine
 with engine.connect() as con, dbe.tera_catch():  
     sql = sa.text("select 1/0")
     rslt = [r for r in con.execute(sql)]
@@ -76,15 +87,15 @@ Now, Jupyter provides a clean error message directly below the failed cell:
 statement = select 1/0 ...
 ```
 
-The full stack trace is still available but doesn’t clutter the main output.
+The full stack trace is still available but doesn't clutter the main output.
 
-### Checkpoints: Prevent Redundant Execution
+## Checkpoints: Prevent Redundant Execution
 
 When running a script that modifies the Teradata environment, errors can cause the script to fail partway. Instead of rerunning everything, I can use checkpoints to resume execution from where it left off:
 
 ```python
 import sqlalchemy as sa
-import dblocks_core as dbe
+import dblocks_core
 
 statements = [
     "select 1;",   # This is OK
@@ -92,7 +103,10 @@ statements = [
     "select 2;",   # This is OK
 ]
 
-ctx = dbe.JupyterContext("a-long-operation")
+dbe = dblocks_core.init("prod")
+engine = dbe.engine
+ctx = dblocks_core.JupyterContext("a-long-operation")
+
 with engine.connect() as con, dbe.tera_catch():  
     for sql in statements:
         if ctx.get_checkpoint(sql):
@@ -123,9 +137,22 @@ When rerun, the first statement is skipped due to the checkpoint:
 statement = select 1/0; ...
 ```
 
-### Finishing the Context
+## Get the full definition of an object
 
-If I don’t mark the context as done, the checkpoint file (a simple JSON) remains, causing all previously executed statements to be skipped. To finalize and remove checkpoints, I use:
+```python
+import dblocks_core
+
+dbe = dblocks_core.init("prod")
+ddl_statemets = dbe.dbi.get_full_definition("ep_tgt","party")
+
+# print out each statement that is part of the object definition
+for stmt in ddl_statemets:
+    print(stmt)
+```
+
+## Finishing the Context
+
+If I don't mark the context as done, the checkpoint file (a simple JSON) remains, causing all previously executed statements to be skipped. To finalize and remove checkpoints, I use:
 
 ```python
 ctx.done()

@@ -12,10 +12,11 @@ def scan_env(
     env: config_model.EnvironParameters,
     ext: AbstractDBI,
     *,
-    filter_databases: str | None = None,
+    filter_databases_like: str | None = None,
     filter_names: str | None = None,
     filter_creator: str | None = None,
     filter_since_dt: datetime | None = None,
+    only_databases: list[str] | None = None,
 ) -> Tuple[tagger.Tagger, meta_model.ListedEnv]:
     """
     Scans the environment to retrieve metadata about databases and objects.
@@ -23,19 +24,20 @@ def scan_env(
     Args:
         env (config_model.EnvironParameters): Environment parameters.
         ext (AbstractDBI): Database interface for extraction.
-        filter_databases (str | None): Optional filter for database names.
+        filter_databases (str | None): Optional filter for database names (mask of the database)
         filter_names (str | None): Optional filter for object names.
         filter_creator (str | None): Optional filter for creator names.
         filter_since_dt (datetime | None): Optional filter for changes since a specific datetime.
+        only_databases (list[str] | None): Limit the scan to specific databases.
 
     Returns:
         Tuple[tagger.Tagger, meta_model.ListedEnv]: A tagger instance and the listed environment metadata.
     """
     # prep db filter
     re_database_filter: re.Pattern | None = None
-    if filter_databases:
-        filter_databases = filter_databases.strip().replace("%", ".*")
-        re_database_filter = re.compile(filter_databases, re.I)
+    if filter_databases_like:
+        filter_databases_like = filter_databases_like.strip().replace("%", ".*")
+        re_database_filter = re.compile(filter_databases_like, re.I)
         logger.info(f"database filter: {re_database_filter}")
 
     # prep tablename filter
@@ -86,6 +88,10 @@ def scan_env(
     all_objects: list[meta_model.IdentifiedObject] = []
 
     for i, database in enumerate(dbs_in_scope, start=1):
+        if only_databases is not None:
+            if database.database_name.upper() not in only_databases:
+                logger.debug(f"skipping database: {database.database_name}")
+                continue
         # we need to get list of objects here, because incremental extraction
         # drops nonexisting objects - DO NOT SKIP THIS
         logger.info(f"scan: {database.database_name} - (#{i}/{len(dbs_in_scope)})")
