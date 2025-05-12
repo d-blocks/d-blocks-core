@@ -299,7 +299,6 @@ def deploy_queue(
                 exc_message=err.message,
             )
             failures[fail.path] = fail  # type: ignore
-        logger.info("Continue")
 
     return deployed_cnt
 
@@ -344,50 +343,6 @@ def deploy_file(
     )
 
 
-# def deploy_procedure_with_drop(
-#     script: str,
-#     object_database: str,
-#     object_name: str,
-#     *,
-#     tgr: tagger.Tagger,
-#     ext: AbstractDBI,
-#     dry_run: bool = False,
-# ):
-#     statements = [script]
-#     logger.debug(f"statements: {len(statements)}")
-
-#     statements = [tgr.expand_statement(s) for s in statements]
-#     if not dry_run:
-#         if obj := ext.get_identified_object(object_database, object_name):
-#             ext.drop_identified_object(obj, ignore_errors=True)
-#         ext.deploy_statements(statements)
-#     else:
-#         for s in statements:
-#             logger.debug(f"dry run: {s}")
-
-
-# def deploy_script_with_drop(
-#     script: str,
-#     object_database: str,
-#     object_name: str,
-#     *,
-#     tgr: tagger.Tagger,
-#     ext: AbstractDBI,
-#     dry_run: bool = False,
-# ):
-#     statements = [s for s in tokenizer.tokenize_statemets(script)]
-#     logger.debug(f"statements: {len(statements)}")
-
-#     statements = [tgr.expand_statement(s) for s in statements]
-#     if not dry_run:
-#         if obj := ext.get_identified_object(object_database, object_name):
-#             ext.drop_identified_object(obj, ignore_errors=True)
-#         ext.deploy_statements(statements)
-#     else:
-#         for s in statements:
-#             logger.debug(f"dry run: {s}")
-
-
 def deploy_script_with_conflict_strategy(
     script: str,
     *,
@@ -420,7 +375,12 @@ def deploy_script_with_conflict_strategy(
     #
     # FIXME: this needs to be checked with ANSI semantics and DML statements.
     # FIXME: maybe? for procedures, tokenize, but handle BEGIN/END statements in the script?
-    if object_type == meta_model.PROCEDURE:
+    if object_type in (
+        meta_model.PROCEDURE,
+        meta_model.MACRO,
+        meta_model.FUNCTION,
+        meta_model.TRIGGER,
+    ):
         statements = [script]
     else:
         statements = [s.statement for s in tokenizer.tokenize_statements(script)]
