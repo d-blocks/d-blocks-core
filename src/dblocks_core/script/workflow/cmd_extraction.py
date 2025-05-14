@@ -58,7 +58,7 @@ def run_extraction(
     # we do not probe the fuill scope of the database, hence deletion of "dropped objects" would cause harm to the metadata.
     drop_nonex_objects = True
     filter_from_file = get_filter_from_file(from_file)
-    if filter_from_file is not None:
+    if filter_from_file is not None or filter_databases is not None:
         drop_nonex_objects = False
 
     # 1. Check if a Git branch is configured in the environment (`env.git_branch`).
