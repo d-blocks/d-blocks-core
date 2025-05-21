@@ -17,6 +17,7 @@ from dblocks_core.model import plugin_model
 from dblocks_core.parse import prsr_simple
 from dblocks_core.script.workflow import (
     cmd_deployment,
+    cmd_detag,
     cmd_extraction,
     cmd_git_copy_changed,
     cmd_init,
@@ -124,6 +125,10 @@ def env_extract(
             help="Path to the file with the list of objetcs - each object on one line."
         ),
     ] = None,
+    allow_drop: Annotated[
+        bool,
+        typer.Option(help="Allow deletion of objects from git."),
+    ] = True,
 ):
     """
     Extraction of the database based on an environment name. The extraction can be
@@ -202,6 +207,7 @@ def env_extract(
             filter_creator=filter_creator,
             plugins=plugins,
             from_file=from_file,
+            allow_drop=allow_drop,
         )
     ctx.done()
 
@@ -557,6 +563,41 @@ def walk(
             # kwargs
             cfg_dict=cfg_dict,
         )
+
+
+@app.command()
+def detag(
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment you want to extract. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    file_or_directory: Annotated[
+        str,
+        typer.Argument(
+            help="Path to the directory, all files in the directory will be detagged."
+        ),
+    ],
+    assume_yes: Annotated[
+        bool, typer.Option(help="Do not ask for confirmations.")
+    ] = False,
+    confirm_if_more_than: Annotated[
+        int, typer.Option(help="Confirm if more than n files.")
+    ] = 50,
+):
+    """Replaces tags in file (or files in a directory) with their values."""
+    cfg = config.load_config()
+    repo = git.repo_factory(in_dir=file_or_directory, raise_on_error=True)
+    cmd_detag.run_detag(
+        env_name=environment,
+        cfg=cfg,
+        repo=repo,
+        file_or_directory=Path(file_or_directory),
+        confirm_if_more_than=confirm_if_more_than,
+        assume_yes=assume_yes,
+    )
 
 
 @app.command()

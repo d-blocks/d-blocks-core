@@ -32,6 +32,7 @@ def run_extraction(
     # behaviour
     log_each: int = 5,
     commit: bool = False,
+    allow_drop: bool = True,
 ):
     """
     Executes a full or incremental extraction of the database.
@@ -56,7 +57,8 @@ def run_extraction(
     # Assume that at the end we are to drop all objects that no longer exist
     # We want to have the ability to switch this off, because - for example - when extracting only specified objects,
     # we do not probe the fuill scope of the database, hence deletion of "dropped objects" would cause harm to the metadata.
-    drop_nonex_objects = True
+    drop_nonex_objects = allow_drop
+    logger.info(f"{drop_nonex_objects=}")
     filter_from_file = get_filter_from_file(from_file)
     if filter_from_file is not None or filter_databases is not None:
         drop_nonex_objects = False
@@ -183,6 +185,7 @@ def run_extraction(
         f"total lenght of the queue is: {len([ e for e in in_scope if e.in_scope])}"
     )
 
+    db = "n/a"
     for i, obj in enumerate(in_scope, start=1):
         db = obj.database_name
         if not obj.in_scope:
@@ -235,8 +238,14 @@ def run_extraction(
         # next iteration
         prev_db = obj.database_name
 
+    if not repo.is_clean():
+        if commit:
+            repo.add()
+            repo.commit(f"dbe env-extract {env_name}: {db}")
+
     # delete droped objects
     if drop_nonex_objects:
+        logger.info("deleting dropped objects")
         wrt.drop_nonex_objects(
             existing_objects=env_data.all_objects,
             tagged_databases=env_data.all_databases,
