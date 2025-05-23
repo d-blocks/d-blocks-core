@@ -79,10 +79,14 @@ __PLUGABLE_MODULES = {
 
 
 def load_plugins(cfg: config_model.Config) -> dict[str, list[Callable]]:
-    """Returns dict of plugins under dblocks_core.plugin
+    """
+    Load and initialize all plugins under the dblocks_core.plugin namespace.
+
+    Args:
+        cfg (config_model.Config): The configuration object to pass to plugin initializers.
 
     Returns:
-        dict[str, ModuleType]: dict of modules
+        dict[str, list[Callable]]: A dictionary mapping plugin module names to lists of plugin instances.
     """
     plugins = {}
     for name, plugin_module in __PLUGABLE_MODULES.items():
@@ -101,13 +105,15 @@ def plugin_instances(
     cfg: config_model.Config,
     class_,
 ) -> list[plugin_model._PluginInstance]:
-    """Returns list of plugin instances of specified base class.
+    """
+    Return a list of plugin instances of the specified base class.
 
     Args:
-        class_ (_type_): one of bblocks_core.model.plugin_model classes, or None
+        cfg (config_model.Config): The configuration object.
+        class_ (type | None): The base class to filter plugin instances by. If None, returns all.
 
     Returns:
-        list[plugin_model._PluginInstance]: list of instantiated plugins of said class
+        list[plugin_model._PluginInstance]: List of instantiated plugins of the specified class.
     """
     logger.trace(class_)
     plugin_modules = load_plugins(cfg)
@@ -135,6 +141,19 @@ def plugin_instances(
 def get_environment_from_config(
     cfg: config_model.Config, environment: str
 ) -> config_model.EnvironParameters:
+    """
+    Retrieve environment parameters for a given environment name from the config.
+
+    Args:
+        cfg (config_model.Config): The configuration object.
+        environment (str): The name of the environment to retrieve.
+
+    Returns:
+        config_model.EnvironParameters: The environment parameters.
+
+    Raises:
+        exc.DConfigError: If the environment is not found in the config.
+    """
     try:
         return cfg.environments[environment]
     except KeyError:
@@ -149,15 +168,31 @@ def load_config_dict(
     env_name_prefix: str = ENVIRON_PREFIX,
     environ: dict[str, Any] | None = None,
     *,
-    locations: Iterable[pathlib.Path] | None = None,
+    from_filenames: Iterable[pathlib.Path] | None = None,
+    from_directories: Iterable[pathlib.Path] | None = None,
 ) -> dict:
-    config_dictionaries = []
-    if locations is None:
-        locations = [pathlib.Path(d) for d in (DBLOCKS_FILE, SECRETS_FILE)]
+    """
+    Load and merge configuration dictionaries from files and environment variables.
 
-    for conf_file_name in locations:
+    Args:
+        encoding (str): Encoding used to read config files. Defaults to "utf-8".
+        env_name_prefix (str): Prefix for environment variables to include. Defaults to "DBLOCKS_".
+        environ (dict[str, Any] | None): Environment variables to use. If None, uses os.environ.
+        from_filenames (Iterable[pathlib.Path] | None): Specific config files to load. If None, uses defaults.
+        from_directories (Iterable[pathlib.Path] | None): Directories to search for config files. If None, uses defaults.
+
+    Returns:
+        dict: The merged configuration dictionary.
+    """
+    config_dictionaries = []
+
+    _directories = from_directories if from_directories else CONFIG_LOCATIONS
+    if from_filenames is None:
+        from_filenames = [pathlib.Path(d) for d in (DBLOCKS_FILE, SECRETS_FILE)]
+
+    for conf_file_name in from_filenames:
         found = False
-        for conf_dir in CONFIG_LOCATIONS:
+        for conf_dir in _directories:
             f = pathlib.Path(conf_dir) / conf_file_name
             try:
                 content = f.read_text(encoding=encoding, errors="strict")
@@ -186,35 +221,21 @@ def load_config(
     encoding: str = "utf-8",
     env_name_prefix: str = ENVIRON_PREFIX,
     environ: dict[str, Any] | None = None,
-    setup_config: bool = True,
+    setup_logger: bool = True,
     *,
-    locations: Iterable[pathlib.Path] | None = None,
+    from_filenames: Iterable[pathlib.Path] | None = None,
+    from_directories: Iterable[pathlib.Path] | None = None,
 ) -> config_model.Config:
     """
-    Load configuration from specified files and environment variables.
+    Load and validate the d-blocks configuration from files and environment variables.
 
-    This function reads configuration data from a list of files and merges it with
-    environment variables. It supports loading configuration in TOML format and
-    validates the resulting configuration against a predefined model.
-
-    Parameters:
-    - files (list[str | pathlib.Path] | None): A list of file paths from which to
-    load configuration. If None, defaults to an empty list.
-    - encoding (str): The character encoding to use when reading files. Defaults
-    to 'utf-8'.
-    - env_name_prefix (str): The prefix used to filter environment variables for
-    configuration. Defaults to 'DBLOCKS_'.
-    - env (dict[str, Any] | None): A dictionary representing environment variables.
-    If None, defaults to using the current environment variables.
-
-    Handling of env variables:
-
-    This function retrieves environment variables that start with a given prefix,
-    removes the prefix, and organizes the remaining key names into a nested
-    dictionary structure. It allows for easy access to configuration values
-    derived from environment variables.
-
-    Example for env variables:
+    This function performs the following steps:
+    1. Loads configuration data from a list of TOML files and merges it with environment variables.
+    2. Validates the resulting configuration against the expected config version.
+    3. Converts the merged dictionary into a strongly-typed Config model using cattrs.
+    4. Resolves all important directory paths to absolute paths, relative to the git repo root or current working directory.
+    5. Optionally sets up logging according to the configuration.
+    6. Invokes plugin-based configuration checks for additional validation.
 
     If the environment contains:
         DBLOCKS_DATABASE__HOST=localhost
@@ -228,21 +249,27 @@ def load_config(
             }
         }
 
+    Args:
+        encoding (str): Encoding used to read config files. Defaults to "utf-8".
+        env_name_prefix (str): Prefix for environment variables to include. Defaults to "DBLOCKS_".
+        environ (dict[str, Any] | None): Environment variables to use. If None, uses os.environ.
+        setup_logger (bool): Whether to configure logging based on the config. Defaults to True.
+        from_filenames (Iterable[pathlib.Path] | None): Specific config files to load. If None, uses defaults.
+        from_directories (Iterable[pathlib.Path] | None): Directories to search for config files. If None, uses defaults.
+
     Returns:
-    - config_model.Config: An instance of the Config model populated with the
-    merged configuration data.
+        config_model.Config: The validated and fully resolved configuration object.
 
     Raises:
-    - TypeError: If there is an issue with the file paths or reading the files.
-    - cattrs.ClassValidationError: If the merged configuration does not conform
-    to the expected structure of the Config model.
+        exc.DConfigError: If the config version is incorrect or the config structure is invalid.
     """
     # config from files
     cfg_dict = load_config_dict(
         encoding=encoding,
         env_name_prefix=env_name_prefix,
         environ=environ,
-        locations=locations,
+        from_filenames=from_filenames,
+        from_directories=from_directories,
     )
 
     # check version
@@ -303,7 +330,7 @@ def load_config(
         prms.writer.target_dir = _absolute(prms.writer.target_dir, cfg.metadata_dir)
 
     # config logger
-    if setup_config and cfg.logging:
+    if setup_logger and cfg.logging:
         setup_logger(cfg.logging)
 
     # use plugins to validate the config
@@ -338,7 +365,18 @@ def add_logger_sink(
     level: str = "DEBUG",
     format: str | None = None,
 ) -> int:
-    "Adds a new sink to the logging and returns a loguru handle."
+    """
+    Add a new sink to the logging system and return its loguru handle.
+
+    Args:
+        sink (str | pathlib.Path): The sink to add (e.g., file path or stream).
+        filter (Callable | None): Optional filter function for log records.
+        level (str): Logging level for the sink.
+        format (str | None): Optional log message format.
+
+    Returns:
+        int: The loguru sink handle ID.
+    """
     _fmt = ("/* {time:HH:mm:ss} */ {message}") if format is None else format
     return logger.add(sink, format=_fmt, level=level, filter=filter)
 
@@ -354,6 +392,12 @@ def remove_logger_sink(id_: int):
 
 
 def setup_logger(logconf: config_model.LoggingConfig | None):
+    """
+    Configure the loguru logger according to the provided logging configuration.
+
+    Args:
+        logconf (config_model.LoggingConfig | None): The logging configuration object.
+    """
     global _LOGGING_WAS_SET
     if not logconf:
         return
@@ -408,6 +452,18 @@ def _censore_keys(
     censored_keys: list[str],
     placeholder: str = REDACTED,
 ) -> dict:
+    """
+    Recursively replace sensitive keys in a dictionary with a placeholder value.
+
+    Args:
+        data (dict): The dictionary to censor.
+        censored_keys (list[str]): List of keys to censor.
+        placeholder (str): The value to use for censored keys.
+
+    Returns:
+        dict: The censored dictionary.
+    """
+
     def _censore_values(data_: dict[str, Any]):
         for k, v in data_.items():
             if k in censored_keys:
@@ -420,6 +476,15 @@ def _censore_keys(
 
 
 def cfg_to_censored_json(cfg: config_model.Config) -> str:
+    """
+    Convert a config object to a JSON string with sensitive keys censored.
+
+    Args:
+        cfg (config_model.Config): The configuration object.
+
+    Returns:
+        str: The censored JSON string.
+    """
     data = cattrs.unstructure(cfg)
     logger.trace("censoring config ...")
     _censore_keys(data, _SECRETS)
@@ -439,28 +504,27 @@ def from_environ_dict(
     dictionary structure. It allows for easy access to configuration values
     derived from environment variables.
 
-    Parameters:
-    - env_name_prefix (str): The prefix used to filter environment variable names.
-    The prefix will be removed from the keys in the resulting dictionary.
-    - env (dict[str, Any] | None): A dictionary representing environment variables.
-    If None, defaults to using the current environment variables.
+    Args:
+        env_name_prefix (str): The prefix used to filter environment variable names.
+        env (dict[str, Any] | None): A dictionary representing environment variables.
+            If None, defaults to using the current environment variables.
 
     Returns:
-    - dict[str, Any]: A nested dictionary containing the configuration values
-    extracted from the environment variables.
+        dict[str, Any]: A nested dictionary containing the configuration values
+        extracted from the environment variables.
 
     Example:
         If the environment contains:
             DBLOCKS_DATABASE__HOST=localhost
             DBLOCKS_DATABASE__PORT=5432
 
-    The function will return:
-        {
-            'database': {
-                'host': 'localhost',
-                'port': '5432',
+        The function will return:
+            {
+                'database': {
+                    'host': 'localhost',
+                    'port': '5432',
+                }
             }
-        }
     """
     env_name_prefix = env_name_prefix.lower()
     ret_val = {}
@@ -496,27 +560,15 @@ def deep_merge_dicts(
     """
     Recursively merge two dictionaries.
 
-    This function takes two dictionaries and merges them into a single
-    dictionary. If both dictionaries have the same key and the values
-    corresponding to that key are themselves dictionaries, those
-    dictionaries are merged recursively. If the values are of different
-    types or if one of the values is not a dictionary, the value from
-    `dict2` will overwrite the value from `dict1`.
+    If both dictionaries have the same key and the values corresponding to that key are themselves dictionaries,
+    those dictionaries are merged recursively. Otherwise, the value from dict2 overwrites the value from dict1.
 
-    Parameters:
+    Args:
         dict1 (dict[Any, Any]): The first dictionary to merge.
         dict2 (dict[Any, Any]): The second dictionary to merge.
 
     Returns:
-        dict[Any, Any]: A new dictionary containing the merged result of
-        `dict1` and `dict2`.
-
-    Example:
-        >>> dict1 = {'a': 1, 'b': {'c': 2}}
-        >>> dict2 = {'b': {'d': 3}, 'e': 4}
-        >>> merged = deep_merge_dicts(dict1, dict2)
-        >>> print(merged)
-        {'a': 1, 'b': {'c': 2, 'd': 3}, 'e': 4}
+        dict[Any, Any]: A new dictionary containing the merged result.
     """
     result = copy.deepcopy(dict1)
     for key, value in dict2.items():
@@ -579,6 +631,15 @@ class _LoggingInterceptHandler(logging.Handler):
 
 
 def get_installed_version(package_name: str = "d-blocks-core") -> str:
+    """
+    Get the installed version of the specified package.
+
+    Args:
+        package_name (str): The name of the package to check.
+
+    Returns:
+        str: The installed version string, or "Package not found" if not installed.
+    """
     try:
         return metadata.version(package_name)
     except metadata.PackageNotFoundError:
