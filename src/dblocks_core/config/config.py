@@ -217,6 +217,10 @@ def load_config_dict(
     return config_dict
 
 
+def copy_defaults(config_dict: dict) -> dict:
+    pass
+
+
 def load_config(
     encoding: str = "utf-8",
     env_name_prefix: str = ENVIRON_PREFIX,
@@ -331,7 +335,7 @@ def load_config(
 
     # config logger
     if setup_logger and cfg.logging:
-        setup_logger(cfg.logging)
+        _setup_logger(cfg.logging)
 
     # use plugins to validate the config
     # class PluginCfgCheck
@@ -391,7 +395,7 @@ def remove_logger_sink(id_: int):
     logger.remove(id_)
 
 
-def setup_logger(logconf: config_model.LoggingConfig | None):
+def _setup_logger(logconf: config_model.LoggingConfig | None):
     """
     Configure the loguru logger according to the provided logging configuration.
 

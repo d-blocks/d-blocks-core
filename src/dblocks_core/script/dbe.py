@@ -318,6 +318,7 @@ def pkg_from_diff(
         ),
     ] = None,
 ):
+    """Prepare package based on git history."""
     cfg = config.load_config()
     repo = git.repo_factory(raise_on_error=True)
 
