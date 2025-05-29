@@ -73,6 +73,11 @@ class DBObjectDoesNotExist(DBError):
 
     pass
 
+class DBDoesNotExist(DBError):
+    "Database does not exist."
+
+    pass
+
 
 class DBNoStatsDefined(DBError):
     "No statistics defined for the object."
