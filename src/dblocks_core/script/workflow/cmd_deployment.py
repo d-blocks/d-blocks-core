@@ -252,9 +252,9 @@ def deploy_queue(
         if object_database is not None and default_db != object_database:
             # switch to the database
             logger.info(f"change default database: {object_database}")
-            default_db = object_database
             try:
-                ext.change_database(default_db)
+                ext.change_database(object_database)
+                default_db = object_database
             except exc.DBDoesNotExist:
                 logger.info(f"default database {object_database} does not exist.")
 
