@@ -42,6 +42,7 @@ _CAN_HAVE_COLUMNS = [meta_model.TABLE, meta_model.VIEW]
 ERR_CODE_USER_PASSWORD_INVALID = "8017"
 ERR_CODE_NO_STATS_DEFINED = "3624"
 ERR_CODE_DOES_NOT_EXIST = "3807"
+ERR_CODE_DB_DOES_NOT_EXIST = "3802"
 ERR_CODE_SYNTAX_ERROR = "3706"
 ERR_CODE_NO_ACCESS = "3523"
 ERR_CODE_REF_INTEGRITY_VIOLATION = "5313"
@@ -196,6 +197,10 @@ def translate_error():
         if err_code == ERR_CODE_NO_STATS_DEFINED:
             logger.debug(cause)
             raise exc.DBNoStatsDefined(err_desc) from err
+
+        if err_code == ERR_CODE_DB_DOES_NOT_EXIST:
+            logger.debug(cause)
+            raise exc.DBDoesNotExist(err_desc) from err
 
         # OperationalError with no error code -> exc.DBCannotConnect
         for dsc in (

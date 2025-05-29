@@ -253,7 +253,10 @@ def deploy_queue(
             # switch to the database
             logger.info(f"change default database: {object_database}")
             default_db = object_database
-            ext.change_database(default_db)
+            try:
+                ext.change_database(default_db)
+            except exc.DBDoesNotExist:
+                logger.info(f"default database {object_database} does not exist.")
 
         try:
             # deploy contents of the file
