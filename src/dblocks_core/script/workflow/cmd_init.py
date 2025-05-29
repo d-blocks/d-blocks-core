@@ -45,7 +45,15 @@ def make_init(
     debug_log_file = config.PROFILE_DATA_PATH / "log"
 
     dblocks_toml = get_default_config(context_dir, report_dir, debug_log_file)
-    secrets_toml = 'environments.dev.password = "__password__"'
+    secrets_toml = dedent(
+        """
+        # uncomment the following line to set the default password
+        # environments.default.password = "__password__"
+
+        # all other environments
+        environments.dev.password = "__password__"
+    """
+    )
 
     # create default config, if config files do not exist
     console = Console()
@@ -179,7 +187,27 @@ def get_default_config(
         # retention of obsolete logs after 15 days
         other_sinks.debug_sink.retention = "15 days"
 
+        # ---------------------------------------------------------------------------------
+        # configuration of the DEFAULT environment
+        # "default" is reserved environment name, if this environment exist, it is used
+        # as a "template" for any other environment
         #
+        # UNCOMMENT AND COMPLETE THESE LINES IF YOU WANT TO USED DEFAULT ENVIRONMENT
+        # ---------------------------------------------------------------------------------
+        # [ environments.default ]
+        # platform = "teradata"
+        # writer.target_dir = "./meta/teradata"
+        # host = "__hostname__"
+        # username = "__username__"
+        # # password - default password is in .dblocks-secrets.toml        
+        # connection_parameters.logmech = "TD2" # TLDAP / TD2
+        #
+        ## if you use the default environment, you have to uncomment the settings of extraction
+        ## otherwise the config is invalid; however, please note, that extraction config is
+        ## NOT copied to other environments (by design)
+        # extraction = [ ]
+        
+        # ---------------------------------------------------------------------------------
         # configuration of environments, each environment has a dedicated section
         # name of the environment is after the "dot", and MUST be in lowercase
         [ environments.dev ]

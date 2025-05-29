@@ -29,6 +29,8 @@ DBLOCKS_NAME = "d-blocks"
 SECRETS_FILE = ".dblocks-secrets.toml"
 DBLOCKS_FILE = "dblocks.toml"
 
+DEFAULT = "default"
+
 PROFILE_CONFIG_PATH = platformdirs.user_config_path(
     appauthor=DBLOCKS_NAME,
     appname=DBLOCKS_NAME,
@@ -217,8 +219,26 @@ def load_config_dict(
     return config_dict
 
 
-def copy_defaults(config_dict: dict) -> dict:
-    pass
+def _copy_defaults(config_dict: dict):
+    try:
+        default_env = config_dict["environments"][DEFAULT]
+    except KeyError:
+        return
+
+    _copy_these = [
+        "platform",
+        "writer",
+        "host",
+        "username",
+        "password",
+        "connection_parameters",
+    ]
+
+    for env_name, env_config in config_dict["environments"].items():
+        for key in _copy_these:
+            if key in default_env and key not in env_config:
+                env_config[key] = default_env[key]
+                logger.debug(f"copy default settings: {env_name}: {key}")
 
 
 def load_config(
@@ -290,6 +310,8 @@ def load_config(
             f"- got: {_config_version}"
         )
         raise exc.DConfigError(message)
+
+    _copy_defaults(cfg_dict)
 
     try:
         cfg = cattrs.structure(cfg_dict, config_model.Config)
