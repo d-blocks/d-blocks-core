@@ -34,7 +34,7 @@ def test_real_database_connection(db_connection_config):
     )
     
     # Create engine and test connection
-    engine = sa.create_engine(connection_url, pool_size=1, max_overflow=0)
+    engine = sa.create_engine(connection_url)
     
     try:
         logger.info("Attempting to connect to Teradata database...")
