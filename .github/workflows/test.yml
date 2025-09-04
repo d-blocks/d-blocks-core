@@ -1,4 +1,4 @@
-name: Run Tests on Develop
+name: Quick Tests (Develop)
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11']  # Quick tests on key versions only
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,6 +44,6 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
       
-      - name: Run tests
+      - name: Run quick tests
         run: |
-          poetry run pytest --verbose --tb=short
+          poetry run pytest --verbose --tb=short -m "not slow"

@@ -26,6 +26,7 @@ extraction.databases = [ "dbc" ]
 """
 
 
+@pytest.mark.unit
 def test_config():
     # this should fail
     logger.info("we expect this to fail")
