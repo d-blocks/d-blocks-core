@@ -10,7 +10,10 @@ import pprint
 import sys
 
 # tomllib je až od verze 3.11, tomli je backport pro starší verze Pythonu
-import tomllib
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Callable, Iterable
