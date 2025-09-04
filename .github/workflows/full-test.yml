@@ -62,7 +62,7 @@ jobs:
           TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
           TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
         run: |
-          poetry run pytest --verbose -m "integration" --tb=long --cov=src/dblocks_core --cov-report=xml --cov-report=term-missing
+          poetry run pytest --verbose -m "integration" --tb=short
       
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
