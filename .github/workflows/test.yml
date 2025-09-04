@@ -3,17 +3,17 @@ name: Quick Tests (Develop)
 on:
   push:
     branches:
-      - develop
+      - master
   pull_request:
     branches:
-      - develop
+      - master
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11']  # Quick tests on key versions only
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

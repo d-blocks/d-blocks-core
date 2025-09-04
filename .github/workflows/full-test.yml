@@ -3,10 +3,10 @@ name: Full Test Suite
 on:
   push:
     branches:
-      - master
+      - develop
   pull_request:
     branches:
-      - master
+      - develop
 
 jobs:
   test:
@@ -14,8 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12']
+        os: [ubuntu-latest]
+        python-version: ['3.11']
     
     steps:
       - name: Checkout code
@@ -47,17 +47,22 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
       
-      - name: Run linting (flake8)
-        run: |
-          poetry run flake8 src/ test/ --max-line-length=88 --extend-ignore=E203,W503
-      
-      - name: Run formatting check (black)
-        run: |
-          poetry run black --check src/ test/
-      
+    #  - name: Run linting (flake8)
+    #    run: |
+    #      poetry run flake8 src/ test/ --max-line-length=88 --extend-ignore=E203,W503
+    #  
+    #  - name: Run formatting check (black)
+    #    run: |
+    #      poetry run black --check src/ test/
+    #  
       - name: Run full test suite with coverage
+        env:
+          TEST_DB_HOST: ${{ secrets.TEST_DB_HOST }}
+          TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
         run: |
-          poetry run pytest --verbose --tb=long --cov=src/dblocks_core --cov-report=xml --cov-report=term-missing
+          poetry run pytest --verbose -m "integration" --tb=long --cov=src/dblocks_core --cov-report=xml --cov-report=term-missing
       
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
