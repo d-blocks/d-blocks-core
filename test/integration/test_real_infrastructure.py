@@ -28,8 +28,7 @@ def test_real_database_connection(db_connection_config):
         password=db_connection_config['password'],
         host=db_connection_config['host'],
         query={
-            "tmode": "TERA",
-            "logmech": "LDAP"
+            "tmode": "TERA"
         }
     )
     
