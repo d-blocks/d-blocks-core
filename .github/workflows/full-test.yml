@@ -75,6 +75,8 @@ jobs:
           TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
           TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
           TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
+          DBLOCKS_ENVIRONMENTS__DEV__PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          DBLOCKS_ENVIRONMENTS__PROD__PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
         run: |
           poetry run pytest --verbose -m "integration" --tb=short
       
