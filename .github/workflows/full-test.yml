@@ -51,7 +51,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TEST_GITHUB_TOKEN }}
         run: |
-          git clone https://${{ github.actor }}:${{ secrets.TEST_GITHUB_TOKEN }}@github.com/d-blocks/d-blocks-test.git test-workspace
+          git clone --branch feature/init-1.0 https://${{ github.actor }}:${{ secrets.TEST_GITHUB_TOKEN }}@github.com/d-blocks/d-blocks-test.git test-workspace
+      
+      - name: Configure test project credentials
+        env:
+          TEST_DB_HOST: ${{ secrets.TEST_DB_HOST }}
+          TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        run: |
+          poetry run python test/integration/configure_test_env.py test-workspace
 
     #  - name: Run linting (flake8)
     #    run: |

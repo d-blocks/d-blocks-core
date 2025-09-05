@@ -133,4 +133,74 @@ class TestDBeeUtilityScenarios:
         finally:
             # Always restore original working directory
             os.chdir(original_cwd)
+
+    @pytest.mark.integration
+    @pytest.mark.scenarios
+    @pytest.mark.requires_db
+    @pytest.mark.slow
+    def test_02_dbee_cfg_check(self, test_workspace, dbee_command):
+        """Test scenario 2: dbee cfg-check from root of test repository with configured credentials."""
+        logger.info("🔧 Testing dbee cfg-check command with configured test environment")
+        
+        # Change to test workspace directory
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(test_workspace)
+            logger.info(f"Working directory: {os.getcwd()}")
+            
+            # Check if dblocks.toml exists in the workspace
+            config_file = Path("dblocks.toml")
+            if config_file.exists():
+                logger.info("✅ Found dblocks.toml configuration file")
+            else:
+                pytest.skip("dblocks.toml not found in test workspace - configuration required for cfg-check")
+            
+            # Execute dbee cfg-check
+            cmd = dbee_command + ["cfg-check"]
+            logger.info(f"Executing: {' '.join(cmd)}")
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60  # Longer timeout as cfg-check might need to validate database connections
+            )
+            
+            # Log the output for debugging
+            if result.stdout:
+                logger.info("cfg-check stdout:")
+                for line in result.stdout.split('\n')[:10]:  # First 10 lines
+                    if line.strip():
+                        logger.info(f"  {line}")
+            
+            if result.stderr:
+                logger.info("cfg-check stderr:")
+                for line in result.stderr.split('\n')[:10]:  # First 10 lines
+                    if line.strip():
+                        logger.info(f"  {line}")
+            
+            # Verify the command succeeded
+            assert result.returncode == 0, f"dbee cfg-check failed with return code {result.returncode}\nStderr: {result.stderr}\nStdout: {result.stdout}"
+            
+            # Verify cfg-check output indicates successful configuration validation
+            output_text = result.stdout.lower() + result.stderr.lower()
+            
+            # The cfg-check command should indicate success
+            success_indicators = ["ok"]
+            has_success_indicator = any(indicator in output_text for indicator in success_indicators)
+            
+            # Should not contain common error indicators
+            error_indicators = ["error"]
+            has_error_indicator = any(indicator in output_text for indicator in error_indicators)
+            
+            assert has_success_indicator or not has_error_indicator, (
+                f"cfg-check output doesn't indicate successful configuration validation. "
+                f"Output: {result.stdout[:500]}..."
+            )
+            
+            logger.info("✅ dbee cfg-check executed successfully - configuration validated!")
+            
+        finally:
+            # Always restore original working directory
+            os.chdir(original_cwd)
     
