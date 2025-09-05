@@ -305,4 +305,79 @@ class TestDBeeUtilityScenarios:
         finally:
             # Always restore original working directory
             os.chdir(original_cwd)
+
+    @pytest.mark.integration
+    @pytest.mark.scenarios
+    @pytest.mark.requires_db
+    @pytest.mark.slow
+    def test_04_dbee_env_test_connection(self, test_workspace, dbee_command):
+        """Test scenario 4: dbee env-test-connection dev to verify database connectivity."""
+        logger.info("🔌 Testing dbee env-test-connection dev command to verify database connectivity")
+        
+        # Change to test workspace directory
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(test_workspace)
+            logger.info(f"Working directory: {os.getcwd()}")
+            
+            # Check if dblocks.toml exists in the workspace
+            config_file = Path("dblocks.toml")
+            if config_file.exists():
+                logger.info("✅ Found dblocks.toml configuration file")
+            else:
+                pytest.skip("dblocks.toml not found in test workspace - configuration required for env-test-connection")
+            
+            # Execute dbee env-test-connection dev
+            cmd = dbee_command + ["env-test-connection", "dev"]
+            logger.info(f"Executing: {' '.join(cmd)}")
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60  # Longer timeout as database connection might take time
+            )
+            
+            # Log the output for debugging
+            if result.stdout:
+                logger.info("env-test-connection stdout:")
+                for line in result.stdout.split('\n'):
+                    if line.strip():
+                        logger.info(f"  {line}")
+            
+            if result.stderr:
+                logger.info("env-test-connection stderr:")
+                for line in result.stderr.split('\n'):
+                    if line.strip():
+                        logger.info(f"  {line}")
+            
+            # Verify the command succeeded
+            assert result.returncode == 0, f"dbee env-test-connection dev failed with return code {result.returncode}\nStderr: {result.stderr}\nStdout: {result.stdout}"
+            
+            # Verify the output contains expected success message
+            output_text = result.stdout + result.stderr  # Check both stdout and stderr
+            
+            # Check for the specific success message
+            success_message = "test_connection - success"
+            assert success_message in output_text, (
+                f"Expected success message '{success_message}' not found in output. "
+                f"Full output: {output_text}"
+            )
+            
+            # Additional checks for connection-related content
+            output_lower = output_text.lower()
+            
+            # Should not contain common error indicators
+            error_indicators = ["failed", "error", "exception", "traceback", "connection refused", "timeout"]
+            found_errors = [indicator for indicator in error_indicators if indicator in output_lower]
+            
+            assert not found_errors, f"Found error indicators in output: {found_errors}. Full output: {output_text}"
+            
+            logger.info("✅ dbee env-test-connection dev executed successfully - database connection verified!")
+            logger.info(f"  - Success message found: '{success_message}'")
+            logger.info(f"  - No error indicators detected")
+            
+        finally:
+            # Always restore original working directory
+            os.chdir(original_cwd)
     
