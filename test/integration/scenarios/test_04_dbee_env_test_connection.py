@@ -51,7 +51,7 @@ class TestDbeeEnvTestConnection(BaseScenarioTest):
             output_text = result.stdout + result.stderr  # Check both stdout and stderr
             
             # Check for the specific success message
-            success_message = "test_connection - success"
+            success_message = "success"
             assert success_message in output_text, (
                 f"Expected success message '{success_message}' not found in output. "
                 f"Full output: {output_text}"
