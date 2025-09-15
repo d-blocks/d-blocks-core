@@ -73,7 +73,7 @@ class TestDbeeCfgPrint(BaseScenarioTest):
                 # JSON format - check for environments section
                 environments = config_data.get("environments", {})
                 assert "prod" in environments, "Configuration should contain 'prod' environment"
-                assert "dev" in environments, "Configuration should contain 'dev' environment"
+                assert "dev1" in environments, "Configuration should contain 'dev1' environment"
                 
                 # Check for host and username in each environment
                 for env_name in ["prod", "dev"]:
