@@ -1,0 +1,110 @@
+name: Integration Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.11', '3.12']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+      
+      - name: Install project
+        run: poetry install --no-interaction
+      
+      - name: Clone test repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.TEST_GITHUB_TOKEN }}
+        run: |
+          git clone --branch feature/init-1.0 https://${{ github.actor }}:${{ secrets.TEST_GITHUB_TOKEN }}@github.com/d-blocks/d-blocks-test.git test-workspace
+      
+      - name: Configure test project credentials
+        env:
+          TEST_DB_HOST: ${{ secrets.TEST_DB_HOST }}
+          TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        run: |
+          poetry run python test/integration/configure_test_env.py test-workspace
+
+    #  - name: Run linting (flake8)
+    #    run: |
+    #      poetry run flake8 src/ test/ --max-line-length=88 --extend-ignore=E203,W503
+    #  
+    #  - name: Run formatting check (black)
+    #    run: |
+    #      poetry run black --check src/ test/
+    #  
+      - name: Run full test suite with coverage
+        env:
+          TEST_DB_HOST: ${{ secrets.TEST_DB_HOST }}
+          TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
+          DBLOCKS_ENVIRONMENTS__DEV__PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          DBLOCKS_ENVIRONMENTS__PROD__PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        run: |
+          poetry run pytest --verbose -m "integration" --tb=short
+      
+    #  - name: Upload coverage reports
+    #    if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+    #    uses: codecov/codecov-action@v4
+    #    with:
+    #      file: ./coverage.xml
+    #      fail_ci_if_error: true
+
+#  security:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#      
+#      - name: Set up Python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: '3.11'
+#      
+#      - name: Install Poetry
+#        uses: snok/install-poetry@v1
+#      
+#      - name: Install dependencies
+#        run: poetry install --no-interaction
+#      
+#      - name: Run security audit
+#        run: |
+#          poetry run pip install safety
+#          poetry run safety check
