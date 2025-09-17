@@ -1,12 +1,11 @@
-name: Quick Tests (Develop)
-
+name: Unit Tests
 on:
   push:
     branches:
-      - master
+      - develop
   pull_request:
     branches:
-      - master
+      - develop
 
 jobs:
   test:

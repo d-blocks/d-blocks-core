@@ -1,12 +1,12 @@
-name: Full Test Suite
+name: Integration Test
 
 on:
   push:
     branches:
-      - develop
+      - master
   pull_request:
     branches:
-      - develop
+      - master
 
 jobs:
   test:
@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.12']
+        python-version: ['3.11', '3.12']
     
     steps:
       - name: Checkout code
