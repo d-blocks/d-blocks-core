@@ -14,13 +14,14 @@ class BranchInfo(NamedTuple):
     last_commit_sha: str
     last_commit_author: str
     last_commit_date: datetime
+    creation_date: datetime | None
     is_merged: bool
     merged_to_branch: str | None
     merge_date: datetime | None
 
 
-def run_git_status(repo: git.Repo, include_remote: bool = True) -> None:
-    """Execute the git-status functionality.
+def run_branch_status(repo: git.Repo, include_remote: bool = True) -> None:
+    """Execute the branch-status functionality.
     
     Args:
         repo (git.Repo): The Git repository to analyze.
@@ -61,7 +62,7 @@ def run_git_status(repo: git.Repo, include_remote: bool = True) -> None:
         _display_branch_status(console, branch_infos, include_remote)
         
     except Exception as err:
-        logger.error(f"Git status analysis failed: {err}")
+        logger.error(f"Branch status analysis failed: {err}")
         console.print(f"Error analyzing repository: {err}", style="bold red")
 
 
@@ -78,6 +79,9 @@ def _get_branch_info(repo: git.Repo, branch: str) -> BranchInfo:
     # Get last commit information
     commit_sha, author, commit_date = repo.get_last_commit_info(branch)
     
+    # Get branch creation date
+    creation_date = repo.get_branch_creation_date(branch)
+    
     # Check if branch is merged
     is_merged, merged_to, merge_date = repo.is_branch_merged(branch)
     
@@ -86,6 +90,7 @@ def _get_branch_info(repo: git.Repo, branch: str) -> BranchInfo:
         last_commit_sha=commit_sha[:8],  # Short SHA for display
         last_commit_author=author,
         last_commit_date=commit_date,
+        creation_date=creation_date,
         is_merged=is_merged,
         merged_to_branch=merged_to,
         merge_date=merge_date
@@ -110,7 +115,8 @@ def _display_branch_status(console: Console, branch_infos: list[BranchInfo], inc
     table.add_column("Type", style="blue", no_wrap=True)
     table.add_column("Last Commit", style="green", no_wrap=True)
     table.add_column("Author", style="blue", no_wrap=True)
-    table.add_column("Commit Date", style="magenta", no_wrap=True)
+    table.add_column("Creation Date", style="yellow", no_wrap=True)
+    table.add_column("Last Commit Date", style="magenta", no_wrap=True)
     table.add_column("Merged Status", style="yellow", no_wrap=True)
     table.add_column("Merge Details", style="dim", no_wrap=False)
     
@@ -137,6 +143,11 @@ def _display_branch_status(console: Console, branch_infos: list[BranchInfo], inc
         # Format commit date
         commit_date_str = branch_info.last_commit_date.strftime("%Y-%m-%d %H:%M")
         
+        # Format creation date
+        creation_date_str = "Unknown"
+        if branch_info.creation_date:
+            creation_date_str = branch_info.creation_date.strftime("%Y-%m-%d")
+        
         # Format merge status
         if branch_info.is_merged:
             merge_status = "✓ Merged"
@@ -152,6 +163,7 @@ def _display_branch_status(console: Console, branch_infos: list[BranchInfo], inc
             branch_type,
             branch_info.last_commit_sha,
             branch_info.last_commit_author,
+            creation_date_str,
             commit_date_str,
             merge_status,
             merge_details

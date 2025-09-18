@@ -863,11 +863,20 @@ class Repo:
                 if branch in merged_branches and branch != target:
                     # Find the merge commit date
                     merge_date = self._get_merge_date(branch, target)
+                    
+                    # Check if branch has moved forward since the merge
+                    if self._has_branch_moved_since_merge(branch, merge_date):
+                        continue  # Branch has new commits, check other targets
+                    
                     return True, target, merge_date
                 
                 # Method 2: Check for squash merges by looking for commits that contain the branch changes
                 squash_merged, squash_date = self._check_squash_merge(branch, target)
                 if squash_merged:
+                    # Check if branch has moved forward since the squash merge
+                    if self._has_branch_moved_since_merge(branch, squash_date):
+                        continue  # Branch has new commits, check other targets
+                    
                     return True, target, squash_date
                     
             except exc.DGitCommandError:
@@ -1064,6 +1073,117 @@ class Repo:
                 
         except Exception as err:
             logger.debug(f"Could not determine merge date for {branch} into {target}: {err}")
+        
+        return None
+
+    def _has_branch_moved_since_merge(self, branch: str, merge_date: datetime | None) -> bool:
+        """Check if a branch has new commits after the given merge date.
+
+        Args:
+            branch (str): The branch to check.
+            merge_date (datetime | None): The date when the branch was merged.
+
+        Returns:
+            bool: True if the branch has commits newer than the merge date, False otherwise.
+        """
+        if merge_date is None:
+            return True  # If we can't determine merge date, assume branch has moved
+        
+        try:
+            # Get the last commit date of the branch
+            _, _, branch_last_commit_date = self.get_last_commit_info(branch)
+            
+            # If the branch's last commit is newer than the merge date, it has moved forward
+            has_moved = branch_last_commit_date > merge_date
+            
+            if has_moved:
+                logger.debug(f"Branch {branch} has moved since merge: "
+                           f"last commit {branch_last_commit_date} > merge date {merge_date}")
+            else:
+                logger.debug(f"Branch {branch} has not moved since merge: "
+                           f"last commit {branch_last_commit_date} <= merge date {merge_date}")
+            
+            return has_moved
+            
+        except Exception as err:
+            logger.debug(f"Error checking if branch {branch} moved since merge: {err}")
+            return True  # If we can't determine, assume it has moved (safer to show as active)
+
+    def get_branch_creation_date(self, branch: str) -> datetime | None:
+        """Get the creation date of a branch by finding when it diverged from main branches.
+
+        Args:
+            branch (str): The branch name to get creation date for.
+
+        Returns:
+            datetime | None: The creation date or None if not determinable.
+        """
+        try:
+            # Only for the primary main branch (master/main), use the first commit in repo
+            clean_branch = branch.removeprefix("origin/").removeprefix("remotes/")
+            if clean_branch in ['master', 'main']:
+                cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch]
+                result = self.run_git_cmd(*cmd)
+                if result.out.strip():
+                    # Take the first line (first commit)
+                    first_line = result.out.strip().split('\n')[0]
+                    return datetime.strptime(first_line, _DTTM_MASK)
+            
+            # For develop branches (long-lived), find the first unique commit after initial commit
+            if clean_branch in ['develop']:
+                # Get all commits on this branch from the beginning
+                cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch]
+                result = self.run_git_cmd(*cmd)
+                if result.out.strip():
+                    lines = result.out.strip().split('\n')
+                    # Skip the first commit (initial repository commit) and return the second
+                    if len(lines) > 1:
+                        creation_date = datetime.strptime(lines[1], _DTTM_MASK)
+                        logger.debug(f"Branch {branch} creation date: {creation_date}")
+                        return creation_date
+            
+            # For all other branches (feature branches), find when they diverged from the primary main branch
+            primary_main_branches = ['master', 'main', 'origin/master', 'origin/main']
+            
+            # Try to find merge-base with each primary main branch
+            for main_branch in primary_main_branches:
+                try:
+                    # Check if main branch exists
+                    all_branches = self.get_all_branches(mode="both")
+                    if main_branch not in all_branches:
+                        continue
+                    
+                    # Find merge-base (common ancestor)
+                    cmd = ["merge-base", main_branch, branch]
+                    result = self.run_git_cmd(*cmd)
+                    
+                    if result.out.strip():
+                        merge_base = result.out.strip()
+                        
+                        # Get the first commit on this branch after the merge-base
+                        cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", 
+                               f"{merge_base}..{branch}"]
+                        result = self.run_git_cmd(*cmd)
+                        
+                        if result.out.strip():
+                            # Take the first line (first commit after merge-base)
+                            first_line = result.out.strip().split('\n')[0]
+                            creation_date = datetime.strptime(first_line, _DTTM_MASK)
+                            logger.debug(f"Branch {branch} creation date: {creation_date}")
+                            return creation_date
+                            
+                except exc.DGitCommandError:
+                    # Try next main branch
+                    continue
+            
+            # Fallback: use the first commit on the branch
+            cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch, "-1"]
+            result = self.run_git_cmd(*cmd)
+            if result.out.strip():
+                return datetime.strptime(result.out.strip(), _DTTM_MASK)
+                
+        except Exception as err:
+            logger.debug(f"Error getting creation date for {branch}: {err}")
         
         return None
 

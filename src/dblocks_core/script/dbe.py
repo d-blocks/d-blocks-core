@@ -20,7 +20,7 @@ from dblocks_core.script.workflow import (
     cmd_detag,
     cmd_extraction,
     cmd_git_copy_changed,
-    cmd_git_status,
+    cmd_branch_status,
     cmd_init,
     cmd_pkg_deployment,
     cmd_quickstart,
@@ -603,7 +603,7 @@ def detag(
 
 
 @app.command()
-def git_status(
+def branch_status(
     remote: Annotated[
         bool,
         typer.Option(
@@ -614,7 +614,7 @@ def git_status(
 ):
     """Analyze Git branches and their merge status."""
     repo = git.repo_factory(raise_on_error=True)
-    cmd_git_status.run_git_status(repo, include_remote=remote)
+    cmd_branch_status.run_branch_status(repo, include_remote=remote)
 
 
 @app.command()
