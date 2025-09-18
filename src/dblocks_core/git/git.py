@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryFile
@@ -755,6 +755,437 @@ class Repo:
         except Exception as err:
             logger.error(err)
             return None
+
+    def get_all_branches(self, mode: str = "local") -> list[str]:
+        """Get a list of branches in the repository.
+
+        Args:
+            mode (str): Branch mode - "local", "remote", or "both". Defaults to "local".
+
+        Returns:
+            list[str]: A list of branch names.
+        """
+        if mode not in ["local", "remote", "both"]:
+            raise ValueError(f"Invalid mode '{mode}'. Must be 'local', 'remote', or 'both'.")
+        
+        branches = []
+        
+        if mode in ["local", "both"]:
+            # Get local branches only
+            cmd = [BRANCH, _FMT_BRANCH_NAME]
+            result = self.run_git_cmd(*cmd)
+            
+            for line in result.out.splitlines():
+                branch = line.strip().removeprefix('"').removesuffix('"')
+                if branch:
+                    branches.append(branch)
+        
+        if mode in ["remote", "both"]:
+            # Get remote branches only
+            cmd = [BRANCH, "-r", _FMT_BRANCH_NAME]
+            result = self.run_git_cmd(*cmd)
+            
+            for line in result.out.splitlines():
+                branch = line.strip().removeprefix('"').removesuffix('"')
+                if branch and branch != "origin" and "HEAD" not in branch:
+                    branches.append(branch)
+        
+        return branches
+
+    def get_last_commit_info(self, branch: str) -> tuple[str, str, datetime]:
+        """Get the last commit info for a specific branch.
+
+        Args:
+            branch (str): The branch name.
+
+        Returns:
+            tuple[str, str, datetime]: Commit SHA, author name, and commit date.
+        """
+        cmd = [LOG, "-1", "--format=%H|%an|%cd", f"--date=format:{_DTTM_MASK}", branch]
+        result = self.run_git_cmd(*cmd)
+        
+        if not result.out.strip():
+            raise exc.DGitCommandError(f"No commits found on branch: {branch}")
+        
+        parts = result.out.strip().split("|")
+        if len(parts) != 3:
+            raise exc.DGitCommandError(f"Unexpected format in commit info: {result.out}")
+        
+        commit_sha, author, date_str = parts
+        commit_date = datetime.strptime(date_str, _DTTM_MASK)
+        
+        return commit_sha, author, commit_date
+
+    def is_branch_merged(self, branch: str, target_branches: list[str] = None) -> tuple[bool, str | None, datetime | None]:
+        """Check if a branch has been merged into any of the target branches.
+        
+        This method detects both traditional merges and squash merges.
+
+        Args:
+            branch (str): The branch to check.
+            target_branches (list[str], optional): List of target branches to check against.
+                Defaults to ['main', 'master', 'develop'].
+
+        Returns:
+            tuple[bool, str | None, datetime | None]: (is_merged, merged_to_branch, merge_date)
+        """
+        if target_branches is None:
+            target_branches = ['main', 'master', 'develop']
+        
+        # Get all existing branches to check which target branches actually exist
+        # Include both local and remote branches for comprehensive checking
+        all_branches = self.get_all_branches(mode="both")
+        existing_targets = []
+        
+        for target in target_branches:
+            # Check for exact match (local branch)
+            if target in all_branches:
+                existing_targets.append(target)
+            # Check for remote versions
+            for branch_name in all_branches:
+                if branch_name.endswith(f"/{target}") or branch_name.endswith(f"origin/{target}"):
+                    existing_targets.append(branch_name)
+        
+        # Remove duplicates while preserving order
+        existing_targets = list(dict.fromkeys(existing_targets))
+        
+        for target in existing_targets:
+            try:
+                # Method 1: Check traditional merge using git branch --merged
+                cmd = [BRANCH, "--merged", target]
+                result = self.run_git_cmd(*cmd)
+                
+                merged_branches = [
+                    line.strip().removeprefix("* ").strip()
+                    for line in result.out.splitlines()
+                ]
+                
+                if branch in merged_branches and branch != target:
+                    # Find the merge commit date
+                    merge_date = self._get_merge_date(branch, target)
+                    
+                    # Check if branch has moved forward since the merge
+                    if self._has_branch_moved_since_merge(branch, merge_date):
+                        continue  # Branch has new commits, check other targets
+                    
+                    return True, target, merge_date
+                
+                # Method 2: Check for squash merges by looking for commits that contain the branch changes
+                squash_merged, squash_date = self._check_squash_merge(branch, target)
+                if squash_merged:
+                    # Check if branch has moved forward since the squash merge
+                    if self._has_branch_moved_since_merge(branch, squash_date):
+                        continue  # Branch has new commits, check other targets
+                    
+                    return True, target, squash_date
+                    
+            except exc.DGitCommandError:
+                # Target branch might not exist, continue checking others
+                continue
+        
+        return False, None, None
+
+    def _check_squash_merge(self, branch: str, target: str) -> tuple[bool, datetime | None]:
+        """Check if a branch was squash-merged into the target branch.
+        
+        This method detects squash merges by comparing the changes between branches
+        and looking for commit messages that might indicate a squash merge.
+
+        Args:
+            branch (str): The feature branch to check.
+            target (str): The target branch to check against.
+
+        Returns:
+            tuple[bool, datetime | None]: (is_squash_merged, squash_merge_date)
+        """
+        try:
+            # Method 1: Look for commits in target that mention the branch name
+            # Common squash merge patterns include variations of the branch name
+            clean_branch = branch.removeprefix("origin/").removeprefix("remotes/")
+            
+            # Create multiple search patterns for flexible matching
+            search_patterns = []
+            
+            # Pattern 1: Exact branch name
+            search_patterns.append(clean_branch)
+            
+            # Pattern 2: Convert hyphens to spaces and capitalize words
+            # feature/ci-test-workflow -> Feature/ci test workflow
+            if "/" in clean_branch:
+                parts = clean_branch.split("/")
+                if len(parts) == 2:
+                    prefix, suffix = parts
+                    formatted_suffix = suffix.replace("-", " ").replace("_", " ")
+                    search_patterns.append(f"{prefix.title()}/{formatted_suffix}")
+                    search_patterns.append(f"{prefix.title()}/{formatted_suffix.title()}")
+            
+            # Pattern 3: Just the suffix part (after the last /)
+            if "/" in clean_branch:
+                suffix = clean_branch.split("/")[-1]
+                search_patterns.append(suffix)
+                search_patterns.append(suffix.replace("-", " "))
+                search_patterns.append(suffix.replace("-", " ").title())
+            
+            # Pattern 4: Remove common prefixes like "feature/", "bugfix/", etc.
+            if clean_branch.startswith(("feature/", "bugfix/", "hotfix/", "chore/")):
+                short_name = clean_branch.split("/", 1)[1]
+                search_patterns.append(short_name)
+                search_patterns.append(short_name.replace("-", " "))
+                search_patterns.append(short_name.replace("-", " ").title())
+            
+            # Try each pattern
+            for pattern in search_patterns:
+                try:
+                    cmd = [LOG, "--oneline", "--grep", pattern, target, "-1"]
+                    result = self.run_git_cmd(*cmd)
+                    
+                    if result.out.strip():
+                        # Found a commit that mentions this pattern, likely a squash merge
+                        # Get the date of this commit
+                        cmd = [LOG, "--format=%cd", f"--date=format:{_DTTM_MASK}", "--grep", pattern, target, "-1"]
+                        result = self.run_git_cmd(*cmd)
+                        
+                        if result.out.strip():
+                            merge_date = datetime.strptime(result.out.strip(), _DTTM_MASK)
+                            logger.debug(f"Found squash merge using pattern '{pattern}': {merge_date}")
+                            return True, merge_date
+                            
+                except exc.DGitCommandError:
+                    # Pattern search failed, try next pattern
+                    continue
+            
+            # Method 2: Check if the branch tip commit exists anywhere in target's history
+            # This would indicate the changes were incorporated (possibly squashed)
+            try:
+                branch_tip = self.get_last_commit_sha(branch)
+                
+                # Check if any commit in target contains the same changes
+                # Use git cherry to find commits that haven't been applied upstream
+                cmd = ["cherry", target, branch]
+                result = self.run_git_cmd(*cmd)
+                
+                # If cherry returns empty output, all commits from branch are in target
+                if not result.out.strip():
+                    # Branch appears to be fully merged/squashed
+                    # Try to find the most recent commit in target that could be the squash
+                    return self._find_potential_squash_commit(branch, target)
+                    
+            except exc.DGitCommandError:
+                # cherry command might fail if branches are too divergent
+                pass
+            
+            # Method 3: Compare the diff between branch and target
+            # If there's no diff, the changes are already incorporated
+            try:
+                cmd = ["diff", f"{target}...{branch}", "--quiet"]
+                result = self.run_git_cmd(*cmd)
+                
+                # If diff --quiet succeeds (return code 0), there are no differences
+                if result.code == 0:
+                    # No differences means changes are incorporated
+                    return self._find_potential_squash_commit(branch, target)
+                    
+            except exc.DGitCommandError:
+                # diff might fail, continue with other methods
+                pass
+                
+        except Exception as err:
+            logger.debug(f"Error checking squash merge for {branch} into {target}: {err}")
+        
+        return False, None
+
+    def _find_potential_squash_commit(self, branch: str, target: str) -> tuple[bool, datetime | None]:
+        """Find the most likely squash commit in target for the given branch.
+
+        Args:
+            branch (str): The feature branch.
+            target (str): The target branch.
+
+        Returns:
+            tuple[bool, datetime | None]: (found, commit_date)
+        """
+        try:
+            # Get the branch creation point (where it diverged from target)
+            cmd = ["merge-base", target, branch]
+            result = self.run_git_cmd(*cmd)
+            merge_base = result.out.strip()
+            
+            if merge_base:
+                # Get the last commit date of the branch
+                branch_last_commit_date = self.get_last_commit_info(branch)[2]
+                
+                # Look for commits in target after the merge base and around the branch's last commit time
+                # Search in a window around the branch's last commit time (±7 days)
+                start_date = (branch_last_commit_date - timedelta(days=7)).strftime(_DTTM_MASK)
+                end_date = (branch_last_commit_date + timedelta(days=7)).strftime(_DTTM_MASK)
+                
+                cmd = [LOG, f"--since={start_date}", f"--until={end_date}", 
+                       "--format=%cd", f"--date=format:{_DTTM_MASK}", target, "-1"]
+                result = self.run_git_cmd(*cmd)
+                
+                if result.out.strip():
+                    squash_date = datetime.strptime(result.out.strip(), _DTTM_MASK)
+                    return True, squash_date
+                    
+        except Exception as err:
+            logger.debug(f"Error finding potential squash commit for {branch}: {err}")
+        
+        return False, None
+
+    def get_last_commit_sha(self, branch: str) -> str:
+        """Get the SHA of the last commit for a specific branch.
+
+        Args:
+            branch (str): The branch name.
+
+        Returns:
+            str: The commit SHA.
+        """
+        cmd = ["show", "--pretty=format:%H", "--no-patch", branch]
+        result = self.run_git_cmd(*cmd)
+        return result.out.strip()
+
+    def _get_merge_date(self, branch: str, target: str) -> datetime | None:
+        """Get the date when a branch was merged into target branch.
+
+        Args:
+            branch (str): The merged branch.
+            target (str): The target branch.
+
+        Returns:
+            datetime | None: The merge date or None if not found.
+        """
+        try:
+            # Look for merge commits that mention the branch
+            cmd = [LOG, "--grep", f"Merge.*{branch}", "--format=%cd", f"--date=format:{_DTTM_MASK}", target, "-1"]
+            result = self.run_git_cmd(*cmd)
+            
+            if result.out.strip():
+                return datetime.strptime(result.out.strip(), _DTTM_MASK)
+            
+            # Alternative: find the first commit in target that contains the branch tip
+            branch_tip = self.get_last_commit_sha(branch)
+            cmd = [LOG, "--format=%cd", f"--date=format:{_DTTM_MASK}", "--ancestry-path", f"{branch_tip}..{target}", "-1"]
+            result = self.run_git_cmd(*cmd)
+            
+            if result.out.strip():
+                return datetime.strptime(result.out.strip(), _DTTM_MASK)
+                
+        except Exception as err:
+            logger.debug(f"Could not determine merge date for {branch} into {target}: {err}")
+        
+        return None
+
+    def _has_branch_moved_since_merge(self, branch: str, merge_date: datetime | None) -> bool:
+        """Check if a branch has new commits after the given merge date.
+
+        Args:
+            branch (str): The branch to check.
+            merge_date (datetime | None): The date when the branch was merged.
+
+        Returns:
+            bool: True if the branch has commits newer than the merge date, False otherwise.
+        """
+        if merge_date is None:
+            return True  # If we can't determine merge date, assume branch has moved
+        
+        try:
+            # Get the last commit date of the branch
+            _, _, branch_last_commit_date = self.get_last_commit_info(branch)
+            
+            # If the branch's last commit is newer than the merge date, it has moved forward
+            has_moved = branch_last_commit_date > merge_date
+            
+            if has_moved:
+                logger.debug(f"Branch {branch} has moved since merge: "
+                           f"last commit {branch_last_commit_date} > merge date {merge_date}")
+            else:
+                logger.debug(f"Branch {branch} has not moved since merge: "
+                           f"last commit {branch_last_commit_date} <= merge date {merge_date}")
+            
+            return has_moved
+            
+        except Exception as err:
+            logger.debug(f"Error checking if branch {branch} moved since merge: {err}")
+            return True  # If we can't determine, assume it has moved (safer to show as active)
+
+    def get_branch_creation_date(self, branch: str) -> datetime | None:
+        """Get the creation date of a branch by finding when it diverged from main branches.
+
+        Args:
+            branch (str): The branch name to get creation date for.
+
+        Returns:
+            datetime | None: The creation date or None if not determinable.
+        """
+        try:
+            # Only for the primary main branch (master/main), use the first commit in repo
+            clean_branch = branch.removeprefix("origin/").removeprefix("remotes/")
+            if clean_branch in ['master', 'main']:
+                cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch]
+                result = self.run_git_cmd(*cmd)
+                if result.out.strip():
+                    # Take the first line (first commit)
+                    first_line = result.out.strip().split('\n')[0]
+                    return datetime.strptime(first_line, _DTTM_MASK)
+            
+            # For develop branches (long-lived), find the first unique commit after initial commit
+            if clean_branch in ['develop']:
+                # Get all commits on this branch from the beginning
+                cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch]
+                result = self.run_git_cmd(*cmd)
+                if result.out.strip():
+                    lines = result.out.strip().split('\n')
+                    # Skip the first commit (initial repository commit) and return the second
+                    if len(lines) > 1:
+                        creation_date = datetime.strptime(lines[1], _DTTM_MASK)
+                        logger.debug(f"Branch {branch} creation date: {creation_date}")
+                        return creation_date
+            
+            # For all other branches (feature branches), find when they diverged from the primary main branch
+            primary_main_branches = ['master', 'main', 'origin/master', 'origin/main']
+            
+            # Try to find merge-base with each primary main branch
+            for main_branch in primary_main_branches:
+                try:
+                    # Check if main branch exists
+                    all_branches = self.get_all_branches(mode="both")
+                    if main_branch not in all_branches:
+                        continue
+                    
+                    # Find merge-base (common ancestor)
+                    cmd = ["merge-base", main_branch, branch]
+                    result = self.run_git_cmd(*cmd)
+                    
+                    if result.out.strip():
+                        merge_base = result.out.strip()
+                        
+                        # Get the first commit on this branch after the merge-base
+                        cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", 
+                               f"{merge_base}..{branch}"]
+                        result = self.run_git_cmd(*cmd)
+                        
+                        if result.out.strip():
+                            # Take the first line (first commit after merge-base)
+                            first_line = result.out.strip().split('\n')[0]
+                            creation_date = datetime.strptime(first_line, _DTTM_MASK)
+                            logger.debug(f"Branch {branch} creation date: {creation_date}")
+                            return creation_date
+                            
+                except exc.DGitCommandError:
+                    # Try next main branch
+                    continue
+            
+            # Fallback: use the first commit on the branch
+            cmd = [LOG, "--reverse", "--format=%cd", f"--date=format:{_DTTM_MASK}", branch, "-1"]
+            result = self.run_git_cmd(*cmd)
+            if result.out.strip():
+                return datetime.strptime(result.out.strip(), _DTTM_MASK)
+                
+        except Exception as err:
+            logger.debug(f"Error getting creation date for {branch}: {err}")
+        
+        return None
 
     def run_git_cmd(self, *args) -> GitResult:
         """
