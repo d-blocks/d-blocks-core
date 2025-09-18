@@ -38,18 +38,34 @@ d-bee provides powerful database management and deployment capabilities tailored
 
 ---
 
+## **Git Workflow Management**
+
+### **8. Branch Status Analysis and Cleanup**
+- Monitor **Git branch landscape** with comprehensive status analysis including creation dates, merge status, and author information.
+- Identify **merged branches** ready for cleanup to maintain repository hygiene.
+- Track **long-running feature branches** that may need attention or refactoring.
+- Coordinate **team collaboration** with shared visibility of branch relationships and merge history.
+
+### **9. Release Planning and Branch Coordination**
+- Review **active feature branches** before release planning with accurate creation dates and completion status.
+- Verify **branch freshness** with last commit dates to ensure development activity.
+- Understand **merge relationships** between branches for effective integration planning.
+- Support **CI/CD pipeline integration** with branch status checks and automated cleanup suggestions.
+
+---
+
 ## **Production Deployment**
 
-### **6. Incremental Package Deployment**
+### **10. Incremental Package Deployment**
 - Automatically generate an **incremental package** by comparing a **Git branch with its original state**.
 - Deploy the package first to **testing** and then to **production**, ensuring a controlled rollout.
 - Maintain a **high level of failure resistance and recovery options**.
 
-### **7. Controlled Deployment of Changes Using BTEQ Directives**
+### **11. Controlled Deployment of Changes Using BTEQ Directives**
 - Incorporate **BTEQ scripting** to apply best practices for **stable package deployments**.
 - Automate deployment processes with **custom logic** to handle edge cases and transactional safety.
 
-### **8. Advanced Conflict Management During Package Deployment**
+### **12. Advanced Conflict Management During Package Deployment**
 - Define **conflict resolution strategies** per:
   - **Deployment process**
   - **Step level**
@@ -61,16 +77,16 @@ d-bee provides powerful database management and deployment capabilities tailored
 
 ## **Database Maintenance & Environment Management**
 
-### **9. Provisioning a New Development or Testing Environment**
+### **13. Provisioning a New Development or Testing Environment**
 - Set up a **new environment from scratch**.
 - Deploy all required objects using **environment deployment**.
 - Ensure complete consistency with other existing environments.
 
-### **10. Cloning an Existing Environment**
+### **14. Cloning an Existing Environment**
 - Extract objects from one environment and deploy them into another.
 - Common use case: **aligning a testing environment with production before releasing new changes**.
 
-### **11. Automated Cleanup of Backup Objects**
+### **15. Automated Cleanup of Backup Objects**
 - Identify and remove **old, unused backup objects**.
 - Keep environments **organized and efficient**.
 
@@ -78,19 +94,19 @@ d-bee provides powerful database management and deployment capabilities tailored
 
 ## **Advanced Comparison and Validation**
 
-### **12. Comparing Environments and Generating Update Packages**
+### **16. Comparing Environments and Generating Update Packages**
 - Compare:
   - **Two database environments** (e.g., Dev vs. Test, Test vs. Prod).
   - **An environment vs. a Git branch**.
   - **Two Git branches** (e.g., `release` vs `master`).
 - Generate **reports** visualizing differences and create an **incremental package** to align environments.
 
-### **13. Validating dbt Models Against Database Schema**
+### **17. Validating dbt Models Against Database Schema**
 - Ensure **dbt models and database structures** remain in sync.
 - Auto-generate **dbt models** from a given physical schema.
 - Define validation rules to catch **schema drift issues early**.
 
-### **14. Suggesting Index and Statistics for Performance Optimization**
+### **18. Suggesting Index and Statistics for Performance Optimization**
 - Identify missing or inefficient **indexes and statistics**.
 - Provide optimization recommendations based on database workload analysis.
 
@@ -98,7 +114,7 @@ d-bee provides powerful database management and deployment capabilities tailored
 
 ## **Long-Term Vision**
 
-### **15. Integrating d-bee with Visual Studio Code (VS Code)**
+### **19. Integrating d-bee with Visual Studio Code (VS Code)**
 - Enable **d-bee commands** directly in VS Code.
 - Provide **database model visualization** and support for **data modelers**.
 - Allow Python-based **automation for large-scale database modeling**.

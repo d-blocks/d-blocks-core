@@ -4,6 +4,17 @@ The **d-bee Road Map** is built based on a **wish list** collected from our **Sl
 
 ---
 
+## Recently Completed Features
+
+### **Git Branch Status Analysis** - *Completed in Version 0.9.5*
+- ✅ **Comprehensive branch analysis** with creation dates, merge status, and author information
+- ✅ **Advanced merge detection** including squash merges and cherry-pick identification
+- ✅ **Rich console output** with color-coded status indicators and cleanup suggestions
+- ✅ **CLI integration** with `--remote` and `--no-remote` filtering options
+- This feature provides powerful Git workflow management capabilities, enabling teams to maintain clean repositories and coordinate branch lifecycles effectively.
+
+---
+
 ## Following Releases and New Features
 
 ### **Create Incremental Package Based on Git History** - *Version 0.9.5*
