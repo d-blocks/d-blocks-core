@@ -933,26 +933,41 @@ class Repo:
                 search_patterns.append(short_name.replace("-", " "))
                 search_patterns.append(short_name.replace("-", " ").title())
             
-            # Try each pattern
+            # Pattern 5: Special case for renamed features
+            # Handle git-status -> branch-status rename
+            if "git-status" in clean_branch:
+                search_patterns.append("branch-status")
+                search_patterns.append("branch status")
+                search_patterns.append("Branch Status")
+                search_patterns.append("Branch-Status")
+            
+            # Try each pattern and find ALL matching commits, use the LATEST one
+            latest_merge_date = None
+            
             for pattern in search_patterns:
                 try:
-                    cmd = [LOG, "--oneline", "--grep", pattern, target, "-1"]
+                    # Search for ALL commits in target branch that mention this pattern
+                    cmd = [LOG, "--format=%cd", f"--date=format:{_DTTM_MASK}", "--grep", pattern, target]
                     result = self.run_git_cmd(*cmd)
                     
                     if result.out.strip():
-                        # Found a commit that mentions this pattern, likely a squash merge
-                        # Get the date of this commit
-                        cmd = [LOG, "--format=%cd", f"--date=format:{_DTTM_MASK}", "--grep", pattern, target, "-1"]
-                        result = self.run_git_cmd(*cmd)
-                        
-                        if result.out.strip():
-                            merge_date = datetime.strptime(result.out.strip(), _DTTM_MASK)
-                            logger.debug(f"Found squash merge using pattern '{pattern}': {merge_date}")
-                            return True, merge_date
-                            
+                        # Found commits that mention this pattern, get all dates
+                        for line in result.out.strip().split('\n'):
+                            if line.strip():
+                                try:
+                                    merge_date = datetime.strptime(line.strip(), _DTTM_MASK)
+                                    if latest_merge_date is None or merge_date > latest_merge_date:
+                                        latest_merge_date = merge_date
+                                except ValueError:
+                                    continue
+                                        
                 except exc.DGitCommandError:
                     # Pattern search failed, try next pattern
                     continue
+            
+            if latest_merge_date:
+                logger.debug(f"Found latest squash merge using patterns: {latest_merge_date}")
+                return True, latest_merge_date
             
             # Method 2: Check if the branch tip commit exists anywhere in target's history
             # This would indicate the changes were incorporated (possibly squashed)
