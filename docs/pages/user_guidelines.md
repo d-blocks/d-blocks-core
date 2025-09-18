@@ -12,5 +12,6 @@ Below are the available sections:
 - [Feature: Environment Deployment](./user_guidelines/env_deploy.md)
 - [Feature: Package Deployment](./user_guidelines/pkg_deploy.md)
 - [Feature: Create incremental package based on git history](./user_guidelines/pkg_from_diff.md)
+- [Feature: Git Branch Status Analysis](./user_guidelines/branch_status.md)
 - [Feature: A better support of using Teradata in Jupyter notebooks](./user_guidelines/jupyter_notebooks.md)
 - 
