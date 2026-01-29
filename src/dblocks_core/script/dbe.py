@@ -18,6 +18,8 @@ from dblocks_core.parse import prsr_simple
 from dblocks_core.script.workflow import (
     cmd_deployment,
     cmd_detag,
+    cmd_env_def_deployment,
+    cmd_env_def_extraction,
     cmd_extraction,
     cmd_git_copy_changed,
     cmd_branch_status,
@@ -296,6 +298,180 @@ def env_deploy(
         else:
             console.print("DONE with errors", style="bold red")
             console.print("We do NOT delete context.")
+
+
+@app.command()
+def env_def_extract(
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment to extract definitions from. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    *,
+    commit: Annotated[
+        bool, 
+        typer.Option(help="Commit changes to the repository.")
+    ] = True,
+    assume_yes: Annotated[
+        bool, 
+        typer.Option(help="Do not ask for confirmations.")
+    ] = False,
+):
+    """
+    Extract environment definitions (databases, users, roles, profiles, privileges)
+    from Teradata and store them as TOML configuration files.
+    
+    This command extracts the structure of database environments (not the objects
+    like tables/views, but the databases, users, roles, etc. themselves) and stores
+    them in TOML format for version control and deployment.
+    
+    The scope of extraction is determined by the 'extraction.databases' configuration
+    in dblocks.toml, following the same logic as env-extract. Only root databases/users
+    defined in the configuration and their children will be extracted.
+    """
+    cfg = config.load_config()
+    env = config.get_environment_from_config(cfg, environment)
+    
+    # Determine env_def_dir from config
+    if hasattr(env.writer, 'env_def_dir'):
+        env_def_dir = env.writer.env_def_dir
+        if not env_def_dir.is_absolute():
+            env_def_dir = cfg.metadata_dir / env_def_dir
+    else:
+        # Fallback to default
+        env_def_dir = cfg.metadata_dir / "env_def"
+    
+    logger.info(f"Environment definition directory: {env_def_dir}")
+    
+    # Git repo
+    repo = git.repo_factory(raise_on_error=False)
+    if repo is not None and repo.is_dirty():
+        logger.warning("Repository is not clean!")
+    
+    # Confirmation
+    if not assume_yes:
+        console.print("\n[bold yellow]Environment Definition Extraction[/bold yellow]")
+        console.print(f"Environment: [bold]{environment}[/bold]")
+        console.print(f"Target directory: {env_def_dir}")
+        console.print(f"Scope: {env.extraction.databases} (and their children)")
+        
+        answer = Prompt.ask(
+            "\n[bold]Do you want to proceed?[/bold]",
+            choices=["yes", "no"],
+            default="no"
+        )
+        
+        if answer.lower() != "yes":
+            raise exc.DOperationsError("Extraction cancelled by user")
+    
+    # Context
+    with context.FSContext(
+        name=f"env-def-extract-{environment}",
+        directory=cfg.ctx_dir,
+        no_exception_is_success=True,
+    ) as ctx:
+        ext = dbi.dbi_factory(cfg, environment)
+        
+        cmd_env_def_extraction.run_env_def_extraction(
+            ctx=ctx,
+            env=env,
+            env_name=environment,
+            ext=ext,
+            env_def_dir=env_def_dir,
+            repo=repo,
+            commit=commit,
+        )
+    
+    ctx.done()
+    console.print("Environment definition extraction completed", style="bold green")
+
+
+@app.command()
+def env_def_deploy(
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment to deploy definitions to. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    *,
+    assume_yes: Annotated[
+        bool, 
+        typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+    ] = False,
+    if_exists: Annotated[
+        str,
+        typer.Option(
+            help="What to do if the object already exists: raise/drop/skip/ignore"
+        ),
+    ] = "skip",
+    dry_run: Annotated[
+        bool, 
+        typer.Option(help="Dry run only simulates deployment without making changes.")
+    ] = False,
+):
+    """
+    Deploy environment definitions (databases, users, roles, profiles, privileges)
+    from TOML configuration files to Teradata database.
+    
+    This command reads TOML configuration files and creates/updates the database
+    environment structures accordingly. It respects the deployment order:
+    profiles -> roles -> databases -> users -> privileges.
+    """
+    cfg = config.load_config()
+    env = config.get_environment_from_config(cfg, environment)
+    
+    # Determine env_def_dir from config
+    if hasattr(env.writer, 'env_def_dir'):
+        env_def_dir = env.writer.env_def_dir
+        if not env_def_dir.is_absolute():
+            env_def_dir = cfg.metadata_dir / env_def_dir
+    else:
+        # Fallback to default
+        env_def_dir = cfg.metadata_dir / "env_def"
+    
+    logger.info(f"Environment definition directory: {env_def_dir}")
+    
+    # Sanity check
+    if not env_def_dir.exists():
+        message = f"Environment definition directory does not exist: {env_def_dir}"
+        raise exc.DOperationsError(message)
+    
+    if not env_def_dir.is_dir():
+        message = f"Not a directory: {env_def_dir}"
+        raise exc.DOperationsError(message)
+    
+    logger.warning("Starting environment definition deployment")
+    
+    # Context
+    with context.FSContext(
+        name=f"env-def-deploy-{environment}",
+        directory=cfg.ctx_dir,
+        no_exception_is_success=False,
+    ) as ctx:
+        ext = dbi.dbi_factory(cfg, environment)
+        
+        results = cmd_env_def_deployment.deploy_env_def(
+            deploy_dir=env_def_dir,
+            cfg=cfg,
+            env=env,
+            env_name=environment,
+            ctx=ctx,
+            ext=ext,
+            if_exists=if_exists,
+            assume_yes=assume_yes,
+            dry_run=dry_run,
+        )
+        
+        if len(results["failed"]) == 0:
+            console.print("Successful deployment", style="bold green")
+            ctx.done()
+        else:
+            console.print("Deployment completed with errors", style="bold red")
+            console.print("Context preserved for troubleshooting.")
 
 
 @app.command()

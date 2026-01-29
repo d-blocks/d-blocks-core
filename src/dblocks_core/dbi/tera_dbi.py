@@ -1098,15 +1098,22 @@ class TeraDBI(contract.AbstractDBI):
         return None
 
     @translate_error()
-    def get_databases(self) -> list[meta_model.DescribedDatabase]:
+    def get_databases(
+        self, 
+        filter_databases: str | None = None
+    ) -> list[meta_model.DescribedDatabase]:
         """
         Retrieves a list of databases from the Teradata system.
+
+        Args:
+            filter_databases: Optional filter for database names (using SQL LIKE pattern)
 
         Returns:
             list[meta_model.DescribedDatabase]: A list of described databases.
 
         Behavior:
         - Constructs a SQL query to retrieve database details from `DBC.databasesV`.
+        - Optionally filters by database name pattern
         - Executes the query using the database engine.
         - Maps the query result to a list of `meta_model.DescribedDatabase`.
         """
@@ -1120,9 +1127,18 @@ class TeraDBI(contract.AbstractDBI):
                 tempSpace AS temp_space,
                 dbKind AS db_kind
             FROM DBC.databasesV
-            ORDER BY databaseName
         """
-        stmt = sa.text(sql)
+        
+        if filter_databases:
+            sql += " WHERE databaseName LIKE :filter_databases"
+        
+        sql += " ORDER BY databaseName"
+        
+        if filter_databases:
+            stmt = sa.text(sql).bindparams(filter_databases=filter_databases)
+        else:
+            stmt = sa.text(sql)
+            
         with self.engine.connect() as con:
             data = [
                 meta_model.DescribedDatabase(
@@ -1240,6 +1256,184 @@ class TeraDBI(contract.AbstractDBI):
                 raise NotImplementedError(msg)
 
         return statements
+
+    @translate_error()
+    def get_users(self, filter_users: str | None = None) -> list[meta_model.DescribedUser]:
+        """
+        Retrieves detailed information about all users.
+        Uses DBC.UsersV which contains user-specific attributes like profile and account.
+        
+        Args:
+            filter_users: Optional filter for user names (using SQL LIKE pattern)
+            
+        Returns:
+            List of DescribedUser objects with Teradata-specific details
+        """
+        sql = """
+            SELECT
+                UserName as user_name,
+                CommentString as comment_string,
+                PermSpace as perm_space,
+                SpoolSpace as spool_space,
+                TempSpace as temp_space,
+                DefaultDatabase as default_database,
+                ProfileName as profile_name,
+                DefaultAccount as account_name
+            FROM DBC.UsersV
+        """
+        
+        if filter_users:
+            sql += " WHERE UserName LIKE :filter_users"
+        
+        sql += " ORDER BY UserName"
+        
+        if filter_users:
+            stmt = sa.text(sql).bindparams(filter_users=filter_users)
+        else:
+            stmt = sa.text(sql)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            return [
+                meta_model.DescribedUser(
+                    user_name=row.user_name.strip() if row.user_name else "",
+                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    user_details=meta_model.DescribedTeradataUser(
+                        owner_name="",  # Not available in DBC.UsersV, users don't have owners
+                        perm_space=row.perm_space,
+                        spool_space=row.spool_space,
+                        temp_space=row.temp_space,
+                        default_database=row.default_database.strip() if row.default_database else None,
+                        profile=row.profile_name.strip() if row.profile_name else None,
+                        account=row.account_name.strip() if row.account_name else None,
+                        db_kind="U",  # Not in UsersV, but we know these are users
+                    ),
+                )
+                for row in rows
+            ]
+
+    @translate_error()
+    def get_roles(self) -> list[meta_model.DescribedRole]:
+        """
+        Retrieves information about all roles.
+        
+        Returns:
+            List of DescribedRole objects with Teradata-specific details
+        """
+        sql = """
+            SELECT
+                roleName as role_name,
+                commentString as comment_string
+            FROM DBC.roles
+            ORDER BY roleName
+        """
+        stmt = sa.text(sql)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            return [
+                meta_model.DescribedRole(
+                    role_name=row.role_name.strip() if row.role_name else "",
+                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    role_details=meta_model.DescribedTeradataRole(),
+                )
+                for row in rows
+            ]
+
+    @translate_error()
+    def get_profiles(self) -> list[meta_model.DescribedProfile]:
+        """
+        Retrieves information about all profiles.
+        
+        Returns:
+            List of DescribedProfile objects with Teradata-specific details
+        """
+        sql = """
+            SELECT
+                profileName as profile_name,
+                commentString as comment_string,
+                spoolSpace as spool_space,
+                tempSpace as temp_space,
+                defaultAccount as default_account,
+                defaultDatabase as default_database
+            FROM DBC.profiles
+            ORDER BY profileName
+        """
+        stmt = sa.text(sql)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            return [
+                meta_model.DescribedProfile(
+                    profile_name=row.profile_name.strip() if row.profile_name else "",
+                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    profile_details=meta_model.DescribedTeradataProfile(
+                        spool_space=row.spool_space,
+                        temp_space=row.temp_space,
+                        account=row.default_account.strip() if row.default_account else None,
+                        default_database=row.default_database.strip() if row.default_database else None,
+                    ),
+                )
+                for row in rows
+            ]
+
+    @translate_error()
+    def get_privileges_for_grantee(
+        self, 
+        grantee_name: str,
+        grantee_type: str = "user"
+    ) -> meta_model.DescribedPrivileges:
+        """
+        Retrieves all privileges for a specific grantee (role, user, or database).
+        
+        Args:
+            grantee_name: Name of the grantee
+            grantee_type: Type of grantee ('user', 'role', or 'database')
+            
+        Returns:
+            DescribedPrivileges object containing all privilege grants
+        """
+        sql = """
+            SELECT
+                DatabaseName as object_database,
+                TableName as object_name,
+                ColumnName as column_name,
+                AccessRight as privilege_type,
+                GrantAuthority as grantable,
+                GrantorName as grantor_name
+            FROM DBC.AllRightsV
+            WHERE UserName = :grantee_name
+            ORDER BY DatabaseName, TableName, AccessRight
+        """
+        stmt = sa.text(sql).bindparams(grantee_name=grantee_name)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            privilege_grants = []
+            for row in rows:
+                grantable_value = row.grantable.strip().upper() if row.grantable else ""
+                is_grantable = grantable_value == 'Y'
+                
+                # Debug logging for grant authority
+                if grantable_value:
+                    logger.debug(f"Privilege {row.privilege_type} on {row.object_database}: GrantAuthority={repr(grantable_value)}, grantable={is_grantable}")
+                
+                privilege_grants.append(
+                    meta_model.PrivilegeGrant(
+                        privilege_type=row.privilege_type.strip() if row.privilege_type else "",
+                        object_database=row.object_database.strip() if row.object_database else None,
+                        object_name=row.object_name.strip() if row.object_name else None,
+                        object_type=None,  # tableKind not available in DBC.AllRightsV
+                        grantable=is_grantable,
+                    )
+                )
+            
+            return meta_model.DescribedPrivileges(
+                grantee_name=grantee_name,
+                grantee_type=grantee_type,
+                privileges=privilege_grants,
+                privilege_details=meta_model.DescribedTeradataPrivileges(),
+            )
 
 
 # dbc.tablesV.tableKind: https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/Data-Dictionary/View-Column-Values/TableKind-Column
