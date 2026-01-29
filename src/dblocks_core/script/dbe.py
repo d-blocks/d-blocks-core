@@ -19,6 +19,7 @@ from dblocks_core.script.workflow import (
     cmd_deployment,
     cmd_detag,
     cmd_env_def_deployment,
+    cmd_env_def_destroy,
     cmd_env_def_extraction,
     cmd_extraction,
     cmd_git_copy_changed,
@@ -471,6 +472,88 @@ def env_def_deploy(
             ctx.done()
         else:
             console.print("Deployment completed with errors", style="bold red")
+            console.print("Context preserved for troubleshooting.")
+
+
+@app.command()
+def env_def_destroy(
+    environment: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the environment to destroy definitions from. "
+            "The environment must be configured in dblocks.toml."
+        ),
+    ],
+    *,
+    assume_yes: Annotated[
+        bool, 
+        typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+    ] = False,
+    dry_run: Annotated[
+        bool, 
+        typer.Option(help="Dry run only simulates destruction without making changes.")
+    ] = False,
+):
+    """
+    Destroy environment definitions (databases, users, roles, profiles)
+    from Teradata database based on TOML configuration files.
+    
+    This command reads TOML configuration files and removes the database
+    environment structures accordingly. It respects the destruction order:
+    child databases/users -> parent databases/users -> roles -> profiles.
+    
+    WARNING: This is a destructive operation that will permanently delete
+    all specified objects and their contents!
+    """
+    cfg = config.load_config()
+    env = config.get_environment_from_config(cfg, environment)
+    
+    # Determine env_def_dir from config
+    if hasattr(env.writer, 'env_def_dir'):
+        env_def_dir = env.writer.env_def_dir
+        if not env_def_dir.is_absolute():
+            env_def_dir = cfg.metadata_dir / env_def_dir
+    else:
+        # Fallback to default
+        env_def_dir = cfg.metadata_dir / "env_def"
+    
+    logger.info(f"Environment definition directory: {env_def_dir}")
+    
+    # Sanity check
+    if not env_def_dir.exists():
+        message = f"Environment definition directory does not exist: {env_def_dir}"
+        raise exc.DOperationsError(message)
+    
+    if not env_def_dir.is_dir():
+        message = f"Not a directory: {env_def_dir}"
+        raise exc.DOperationsError(message)
+    
+    logger.warning("Starting environment definition destruction")
+    
+    # Context
+    with context.FSContext(
+        name=f"env-def-destroy-{environment}",
+        directory=cfg.ctx_dir,
+        no_exception_is_success=False,
+    ) as ctx:
+        ext = dbi.dbi_factory(cfg, environment)
+        
+        results = cmd_env_def_destroy.destroy_env_def(
+            deploy_dir=env_def_dir,
+            cfg=cfg,
+            env=env,
+            env_name=environment,
+            ctx=ctx,
+            ext=ext,
+            assume_yes=assume_yes,
+            dry_run=dry_run,
+        )
+        
+        if len(results["failed"]) == 0:
+            console.print("Successful destruction", style="bold green")
+            ctx.done()
+        else:
+            console.print("Destruction completed with errors", style="bold red")
             console.print("Context preserved for troubleshooting.")
 
 

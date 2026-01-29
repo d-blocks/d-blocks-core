@@ -736,19 +736,53 @@ def _deploy_single_privilege(
         if not _should_deploy_for_env(data, env_name):
             return (True, {"type": "privileges", "name": data["grantee_name"], "status": "skipped"}, None)
         
+        grantee_name = data["grantee_name"]
+        
+        # Check if grantee exists (could be user, role, or database)
+        if not _check_database_exists(grantee_name, ext) and not _check_role_exists(grantee_name, ext):
+            logger.warning(f"Skipping privileges for {grantee_name} - grantee does not exist (may be filtered by only_in/not_only_in)")
+            return (True, {"type": "privileges", "name": grantee_name, "status": "skipped (grantee not found)"}, None)
+        
+        # Validate that target databases/objects exist before generating DDL
+        grant_blocks = data.get("grant", [])
+        valid_grant_blocks = []
+        
+        for grant_block in grant_blocks:
+            database = grant_block.get("database")
+            
+            # Expand variables in database name
+            if database:
+                expanded_database = tgr.expand_statement(database)
+                
+                # Check if target database exists
+                if not _check_database_exists(expanded_database, ext):
+                    logger.warning(f"Skipping privilege grant on database '{expanded_database}' for {grantee_name} - database does not exist (may be filtered by only_in/not_only_in)")
+                    continue
+            
+            # This grant block is valid, keep it
+            valid_grant_blocks.append(grant_block)
+        
+        # If no valid grant blocks remain, skip this privilege file
+        if not valid_grant_blocks:
+            logger.info(f"Skipping all privileges for {grantee_name} - no valid target databases/objects found")
+            return (True, {"type": "privileges", "name": grantee_name, "status": "skipped (no valid targets)"}, None)
+        
+        # Update data with only valid grant blocks
+        data["grant"] = valid_grant_blocks
+        
         ddl_statements = _generate_privilege_ddl(data, tgr)
         
         if dry_run:
-            logger.info(f"[DRY-RUN] Would execute {len(ddl_statements)} GRANT statements for {data['grantee_name']}")
+            logger.info(f"[DRY-RUN] Would execute {len(ddl_statements)} GRANT statements for {grantee_name}")
             for stmt in ddl_statements[:5]:
                 logger.info(f"  {stmt}")
             if len(ddl_statements) > 5:
                 logger.info(f"  ... and {len(ddl_statements) - 5} more")
         else:
-            logger.info(f"Granting {len(ddl_statements)} privileges to: {data['grantee_name']}")
+            logger.info(f"Granting {len(ddl_statements)} privileges to: {grantee_name}")
             ext.deploy_statements(ddl_statements)
         
-        return (True, {"type": "privileges", "name": data["grantee_name"]}, None)
+        return (True, {"type": "privileges", "name": grantee_name}, None)
     except exc.DBObjectDoesNotExist as e:
         # Dependency missing - will retry
         logger.debug(f"Privileges for {data.get('grantee_name', 'unknown')} deferred - dependency missing: {e}")
