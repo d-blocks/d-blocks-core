@@ -1313,9 +1313,12 @@ class TeraDBI(contract.AbstractDBI):
             ]
 
     @translate_error()
-    def get_roles(self) -> list[meta_model.DescribedRole]:
+    def get_roles(self, filter_roles: str | None = None) -> list[meta_model.DescribedRole]:
         """
         Retrieves information about all roles.
+        
+        Args:
+            filter_roles: Optional filter for role names (using SQL LIKE pattern)
         
         Returns:
             List of DescribedRole objects with Teradata-specific details
@@ -1325,9 +1328,17 @@ class TeraDBI(contract.AbstractDBI):
                 roleName as role_name,
                 commentString as comment_string
             FROM DBC.roles
-            ORDER BY roleName
         """
-        stmt = sa.text(sql)
+        
+        if filter_roles:
+            sql += " WHERE roleName LIKE :filter_roles"
+        
+        sql += " ORDER BY roleName"
+        
+        if filter_roles:
+            stmt = sa.text(sql).bindparams(filter_roles=filter_roles)
+        else:
+            stmt = sa.text(sql)
         
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
@@ -1341,9 +1352,12 @@ class TeraDBI(contract.AbstractDBI):
             ]
 
     @translate_error()
-    def get_profiles(self) -> list[meta_model.DescribedProfile]:
+    def get_profiles(self, filter_profiles: str | None = None) -> list[meta_model.DescribedProfile]:
         """
         Retrieves information about all profiles.
+        
+        Args:
+            filter_profiles: Optional filter for profile names (using SQL LIKE pattern)
         
         Returns:
             List of DescribedProfile objects with Teradata-specific details
@@ -1357,9 +1371,17 @@ class TeraDBI(contract.AbstractDBI):
                 defaultAccount as default_account,
                 defaultDatabase as default_database
             FROM DBC.profiles
-            ORDER BY profileName
         """
-        stmt = sa.text(sql)
+        
+        if filter_profiles:
+            sql += " WHERE profileName LIKE :filter_profiles"
+        
+        sql += " ORDER BY profileName"
+        
+        if filter_profiles:
+            stmt = sa.text(sql).bindparams(filter_profiles=filter_profiles)
+        else:
+            stmt = sa.text(sql)
         
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()

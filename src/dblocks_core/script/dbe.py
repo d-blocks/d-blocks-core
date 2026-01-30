@@ -319,6 +319,30 @@ def env_def_extract(
         bool, 
         typer.Option(help="Do not ask for confirmations.")
     ] = False,
+    filter_databases: Annotated[
+        str | None,
+        typer.Option(
+            help="Filter mask for databases/users to extract. "
+            "The '%' sign means 'any number of any characters'. "
+            "Only databases/users matching this pattern will be extracted."
+        ),
+    ] = None,
+    filter_roles: Annotated[
+        str | None,
+        typer.Option(
+            help="Filter mask for roles to extract. "
+            "The '%' sign means 'any number of any characters'. "
+            "Only roles matching this pattern will be extracted."
+        ),
+    ] = None,
+    filter_profiles: Annotated[
+        str | None,
+        typer.Option(
+            help="Filter mask for profiles to extract. "
+            "The '%' sign means 'any number of any characters'. "
+            "Only profiles matching this pattern will be extracted."
+        ),
+    ] = None,
 ):
     """
     Extract environment definitions (databases, users, roles, profiles, privileges)
@@ -331,6 +355,9 @@ def env_def_extract(
     The scope of extraction is determined by the 'extraction.databases' configuration
     in dblocks.toml, following the same logic as env-extract. Only root databases/users
     defined in the configuration and their children will be extracted.
+    
+    Additional filters can be applied using --filter-databases, --filter-roles, and
+    --filter-profiles to narrow down the extraction scope.
     """
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
@@ -358,6 +385,13 @@ def env_def_extract(
         console.print(f"Target directory: {env_def_dir}")
         console.print(f"Scope: {env.extraction.databases} (and their children)")
         
+        if filter_databases:
+            console.print(f"Database filter: {filter_databases}")
+        if filter_roles:
+            console.print(f"Role filter: {filter_roles}")
+        if filter_profiles:
+            console.print(f"Profile filter: {filter_profiles}")
+        
         answer = Prompt.ask(
             "\n[bold]Do you want to proceed?[/bold]",
             choices=["yes", "no"],
@@ -383,6 +417,9 @@ def env_def_extract(
             env_def_dir=env_def_dir,
             repo=repo,
             commit=commit,
+            filter_databases=filter_databases,
+            filter_roles=filter_roles,
+            filter_profiles=filter_profiles,
         )
     
     ctx.done()

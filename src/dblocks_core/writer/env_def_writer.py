@@ -112,6 +112,9 @@ class EnvDefWriter:
         """
         Write database definition to TOML file.
         
+        Merges with existing TOML file if present, preserving manual configurations
+        like only_in and not_only_in.
+        
         Args:
             db_def: DescribedDatabase from meta_model
             tagger: Optional Tagger for making names environment-agnostic
@@ -125,9 +128,20 @@ class EnvDefWriter:
         filename = f"{self._sanitize_filename(tagged_name)}.toml"
         filepath = self.databases_dir / filename
         
+        # Load existing TOML file if it exists (to preserve manual configurations)
+        existing_data = {}
+        if filepath.exists():
+            try:
+                with open(filepath, "rb") as f:
+                    existing_data = tomllib.load(f)
+                logger.debug(f"Loaded existing database definition: {filepath}")
+            except Exception as e:
+                logger.warning(f"Failed to load existing database definition {filepath}: {e}")
+        
         # Determine kind from db_kind
         kind = "database" if (db_def.database_details and db_def.database_details.db_kind == "D") else "user"
         
+        # Build new data from extraction
         data = {
             "name": tagged_name,
             "kind": kind,
@@ -146,6 +160,14 @@ class EnvDefWriter:
         
         if db_def.comment_string:
             data["comment"] = db_def.comment_string
+        
+        # Merge: preserve only_in and not_only_in from existing file
+        if "only_in" in existing_data:
+            data["only_in"] = existing_data["only_in"]
+            logger.debug(f"Preserved only_in: {data['only_in']} for {tagged_name}")
+        if "not_only_in" in existing_data:
+            data["not_only_in"] = existing_data["not_only_in"]
+            logger.debug(f"Preserved not_only_in: {data['not_only_in']} for {tagged_name}")
             
         try:
             import tomli_w
@@ -160,6 +182,9 @@ class EnvDefWriter:
         """
         Write user definition to TOML file.
         
+        Merges with existing TOML file if present, preserving manual configurations
+        like only_in and not_only_in.
+        
         Args:
             user_def: DescribedUser from meta_model
             tagger: Optional Tagger for making names environment-agnostic
@@ -173,6 +198,17 @@ class EnvDefWriter:
         filename = f"{self._sanitize_filename(tagged_name)}.toml"
         filepath = self.users_dir / filename
         
+        # Load existing TOML file if it exists (to preserve manual configurations)
+        existing_data = {}
+        if filepath.exists():
+            try:
+                with open(filepath, "rb") as f:
+                    existing_data = tomllib.load(f)
+                logger.debug(f"Loaded existing user definition: {filepath}")
+            except Exception as e:
+                logger.warning(f"Failed to load existing user definition {filepath}: {e}")
+        
+        # Build new data from extraction
         data = {
             "name": tagged_name,
             "kind": "user",
@@ -200,6 +236,14 @@ class EnvDefWriter:
             data["password"] = user_def.password
         if user_def.comment_string:
             data["comment"] = user_def.comment_string
+        
+        # Merge: preserve only_in and not_only_in from existing file
+        if "only_in" in existing_data:
+            data["only_in"] = existing_data["only_in"]
+            logger.debug(f"Preserved only_in: {data['only_in']} for {tagged_name}")
+        if "not_only_in" in existing_data:
+            data["not_only_in"] = existing_data["not_only_in"]
+            logger.debug(f"Preserved not_only_in: {data['not_only_in']} for {tagged_name}")
             
         try:
             import tomli_w
@@ -214,6 +258,9 @@ class EnvDefWriter:
         """
         Write role definition to TOML file.
         
+        Merges with existing TOML file if present, preserving manual configurations
+        like only_in and not_only_in.
+        
         Args:
             role_def: DescribedRole from meta_model
             tagger: Optional Tagger for making names environment-agnostic
@@ -227,6 +274,17 @@ class EnvDefWriter:
         filename = f"{self._sanitize_filename(tagged_name)}.toml"
         filepath = self.roles_dir / filename
         
+        # Load existing TOML file if it exists (to preserve manual configurations)
+        existing_data = {}
+        if filepath.exists():
+            try:
+                with open(filepath, "rb") as f:
+                    existing_data = tomllib.load(f)
+                logger.debug(f"Loaded existing role definition: {filepath}")
+            except Exception as e:
+                logger.warning(f"Failed to load existing role definition {filepath}: {e}")
+        
+        # Build new data from extraction
         data = {
             "name": tagged_name,
             "kind": "role",
@@ -234,6 +292,14 @@ class EnvDefWriter:
         
         if role_def.comment_string:
             data["comment"] = role_def.comment_string
+        
+        # Merge: preserve only_in and not_only_in from existing file
+        if "only_in" in existing_data:
+            data["only_in"] = existing_data["only_in"]
+            logger.debug(f"Preserved only_in: {data['only_in']} for {tagged_name}")
+        if "not_only_in" in existing_data:
+            data["not_only_in"] = existing_data["not_only_in"]
+            logger.debug(f"Preserved not_only_in: {data['not_only_in']} for {tagged_name}")
             
         try:
             import tomli_w
@@ -248,6 +314,9 @@ class EnvDefWriter:
         """
         Write profile definition to TOML file.
         
+        Merges with existing TOML file if present, preserving manual configurations
+        like only_in and not_only_in.
+        
         Args:
             profile_def: DescribedProfile from meta_model
             tagger: Optional Tagger for making names environment-agnostic
@@ -261,6 +330,17 @@ class EnvDefWriter:
         filename = f"{self._sanitize_filename(tagged_name)}.toml"
         filepath = self.profiles_dir / filename
         
+        # Load existing TOML file if it exists (to preserve manual configurations)
+        existing_data = {}
+        if filepath.exists():
+            try:
+                with open(filepath, "rb") as f:
+                    existing_data = tomllib.load(f)
+                logger.debug(f"Loaded existing profile definition: {filepath}")
+            except Exception as e:
+                logger.warning(f"Failed to load existing profile definition {filepath}: {e}")
+        
+        # Build new data from extraction
         data = {
             "name": tagged_name,
             "kind": "profile",
@@ -279,6 +359,14 @@ class EnvDefWriter:
         
         if profile_def.comment_string:
             data["comment"] = profile_def.comment_string
+        
+        # Merge: preserve only_in and not_only_in from existing file
+        if "only_in" in existing_data:
+            data["only_in"] = existing_data["only_in"]
+            logger.debug(f"Preserved only_in: {data['only_in']} for {tagged_name}")
+        if "not_only_in" in existing_data:
+            data["not_only_in"] = existing_data["not_only_in"]
+            logger.debug(f"Preserved not_only_in: {data['not_only_in']} for {tagged_name}")
             
         try:
             import tomli_w

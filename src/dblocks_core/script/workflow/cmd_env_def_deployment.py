@@ -33,6 +33,204 @@ _DEPLOYMENT_STRATEGIES = [DROP_STRATEGY, RAISE_STRATEGY, IGNORE_STRATEGY, SKIP_S
 console = Console()
 
 
+def _build_space_dependency_tree(
+    database_files: list[Path],
+    user_files: list[Path],
+    env_name: str,
+    tgr: tagger.Tagger,
+) -> tuple[dict[str, list[str]], dict[str, dict[str, Any]]]:
+    """
+    Build dependency tree for space calculation.
+    
+    Returns parent->children mapping and object data mapping.
+    
+    Args:
+        database_files: List of database TOML files
+        user_files: List of user TOML files
+        env_name: Environment name for filtering
+        tgr: Tagger for variable expansion
+        
+    Returns:
+        Tuple of (parent_to_children_map, object_data_map)
+        - parent_to_children_map: Dict mapping parent name to list of children names
+        - object_data_map: Dict mapping object name to its data (owner, perm_space, etc.)
+    """
+    parent_to_children: dict[str, list[str]] = {}
+    object_data_map: dict[str, dict[str, Any]] = {}
+    
+    # Process all databases and users
+    all_files = [(f, "database") for f in database_files] + [(f, "user") for f in user_files]
+    
+    for filepath, obj_type in all_files:
+        try:
+            data = _load_toml_file(filepath)
+            data = _expand_variables(data, tgr)
+            
+            # Skip objects not for this environment
+            if not _should_deploy_for_env(data, env_name):
+                continue
+            
+            name = data.get("name")
+            owner = data.get("owner")
+            
+            if not name:
+                logger.warning(f"Skipping {filepath} - no name defined")
+                continue
+            
+            # Store object data
+            object_data_map[name] = {
+                "name": name,
+                "owner": owner,
+                "perm_space": data.get("perm_space"),
+                "spool_space": data.get("spool_space"),
+                "temp_space": data.get("temp_space"),
+                "kind": data.get("kind", obj_type),
+            }
+            
+            # Build parent->children mapping
+            if owner:
+                if owner not in parent_to_children:
+                    parent_to_children[owner] = []
+                parent_to_children[owner].append(name)
+                
+        except Exception as e:
+            logger.warning(f"Failed to process {filepath} for space calculation: {e}")
+    
+    return parent_to_children, object_data_map
+
+
+def _calculate_cumulative_space(
+    parent_to_children: dict[str, list[str]],
+    object_data_map: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """
+    Calculate cumulative space requirements for each database/user.
+    
+    When a child database/user is created, it "steals" space from its parent.
+    Therefore, parent's space allocation must include all descendant space.
+    
+    Args:
+        parent_to_children: Mapping of parent name to list of children names
+        object_data_map: Mapping of object name to its data
+        
+    Returns:
+        Dict mapping object name to cumulative space dict (perm_space, spool_space, temp_space)
+    """
+    cumulative_space: dict[str, dict[str, str]] = {}
+    
+    def calculate_recursive(obj_name: str) -> dict[str, int]:
+        """
+        Recursively calculate cumulative space for an object and all its descendants.
+        
+        Returns dict with perm_space, spool_space, temp_space as integers (bytes).
+        """
+        if obj_name in cumulative_space:
+            # Already calculated - convert back to int for summing
+            cached = cumulative_space[obj_name]
+            return {
+                "perm_space": _parse_space_to_bytes(cached.get("perm_space", "0")),
+                "spool_space": _parse_space_to_bytes(cached.get("spool_space", "0")),
+                "temp_space": _parse_space_to_bytes(cached.get("temp_space", "0")),
+            }
+        
+        # Get own space
+        obj_data = object_data_map.get(obj_name, {})
+        own_perm = _parse_space_to_bytes(obj_data.get("perm_space", "0"))
+        own_spool = _parse_space_to_bytes(obj_data.get("spool_space", "0"))
+        own_temp = _parse_space_to_bytes(obj_data.get("temp_space", "0"))
+        
+        # Sum up children's space
+        children = parent_to_children.get(obj_name, [])
+        for child_name in children:
+            child_space = calculate_recursive(child_name)
+            own_perm += child_space["perm_space"]
+            own_spool += child_space["spool_space"]
+            own_temp += child_space["temp_space"]
+        
+        # Cache result (convert bytes back to string format)
+        cumulative_space[obj_name] = {
+            "perm_space": _format_bytes_to_space(own_perm),
+            "spool_space": _format_bytes_to_space(own_spool),
+            "temp_space": _format_bytes_to_space(own_temp),
+        }
+        
+        return {
+            "perm_space": own_perm,
+            "spool_space": own_spool,
+            "temp_space": own_temp,
+        }
+    
+    # Calculate for all objects
+    for obj_name in object_data_map.keys():
+        if obj_name not in cumulative_space:
+            calculate_recursive(obj_name)
+    
+    return cumulative_space
+
+
+def _parse_space_to_bytes(space_str: str | None) -> int:
+    """
+    Parse space string to bytes.
+    
+    Examples: "100", "10e6", "1e9", "50M", "2G"
+    
+    Args:
+        space_str: Space string (may include scientific notation or suffixes)
+        
+    Returns:
+        Space in bytes as integer
+    """
+    if not space_str:
+        return 0
+    
+    space_str = str(space_str).strip().upper()
+    
+    # Handle scientific notation (e.g., "1e9" or "10e6")
+    if 'E' in space_str:
+        try:
+            return int(float(space_str))
+        except ValueError:
+            pass
+    
+    # Handle suffixes (K, M, G, T)
+    multipliers = {
+        'K': 1024,
+        'M': 1024 * 1024,
+        'G': 1024 * 1024 * 1024,
+        'T': 1024 * 1024 * 1024 * 1024,
+    }
+    
+    for suffix, multiplier in multipliers.items():
+        if space_str.endswith(suffix):
+            try:
+                value = float(space_str[:-1])
+                return int(value * multiplier)
+            except ValueError:
+                pass
+    
+    # No suffix - just parse as number
+    try:
+        return int(float(space_str))
+    except ValueError:
+        logger.warning(f"Failed to parse space value: {space_str}, using 0")
+        return 0
+
+
+def _format_bytes_to_space(bytes_val: int) -> str:
+    """
+    Format bytes back to space string (keeping original format as much as possible).
+    
+    For simplicity, we return plain byte count as string.
+    
+    Args:
+        bytes_val: Space in bytes
+        
+    Returns:
+        Space string
+    """
+    return str(bytes_val) if bytes_val > 0 else "0"
+
+
 def _should_deploy_for_env(obj_data: dict[str, Any], env_name: str) -> bool:
     """
     Check if object should be deployed for given environment based on only_in/not_only_in.
@@ -56,12 +254,17 @@ def _should_deploy_for_env(obj_data: dict[str, Any], env_name: str) -> bool:
     return True
 
 
-def _generate_database_ddl(db_data: dict[str, Any]) -> list[str]:
+def _generate_database_ddl(
+    db_data: dict[str, Any],
+    cumulative_space_map: dict[str, dict[str, str]] | None = None,
+) -> list[str]:
     """
     Generate CREATE DATABASE DDL from configuration.
     
     Args:
         db_data: Database configuration data
+        cumulative_space_map: Optional mapping of object names to cumulative space
+            (includes space needed for all descendants)
         
     Returns:
         List of DDL statements
@@ -80,15 +283,53 @@ def _generate_database_ddl(db_data: dict[str, Any]) -> list[str]:
     # Add AS keyword only if there are space parameters
     as_params = []
     
-    if perm_space := db_data.get("perm_space"):
-        as_params.append(f"PERM = {perm_space}")
-    
-    if spool_space := db_data.get("spool_space"):
-        as_params.append(f"SPOOL = {spool_space}")
-    
-    # TEMP is only valid for CREATE USER, not CREATE DATABASE
-    if kind == "user" and (temp_space := db_data.get("temp_space")):
-        as_params.append(f"TEMP = {temp_space}")
+    # Use cumulative space if available, otherwise use configured space
+    if cumulative_space_map and name in cumulative_space_map:
+        cumulative = cumulative_space_map[name]
+        logger.debug(f"Using cumulative space for {name}: {cumulative}")
+        
+        # For PERM space: use cumulative if > 0, otherwise fallback to original config
+        if perm_space := cumulative.get("perm_space"):
+            if perm_space != "0":
+                as_params.append(f"PERM = {perm_space}")
+            elif perm_space_orig := db_data.get("perm_space"):
+                # Cumulative is 0 but original config has value - use original
+                as_params.append(f"PERM = {perm_space_orig}")
+        elif perm_space_orig := db_data.get("perm_space"):
+            # No cumulative but original exists - use original
+            as_params.append(f"PERM = {perm_space_orig}")
+        
+        # For SPOOL space: use cumulative if > 0, otherwise fallback to original
+        if spool_space := cumulative.get("spool_space"):
+            if spool_space != "0":
+                as_params.append(f"SPOOL = {spool_space}")
+            elif spool_space_orig := db_data.get("spool_space"):
+                # Cumulative is 0 but original config has value - use original
+                as_params.append(f"SPOOL = {spool_space_orig}")
+        elif spool_space_orig := db_data.get("spool_space"):
+            # No cumulative but original exists - use original
+            as_params.append(f"SPOOL = {spool_space_orig}")
+        
+        # TEMP is only valid for CREATE USER, not CREATE DATABASE
+        if kind == "user":
+            if temp_space := cumulative.get("temp_space"):
+                if temp_space != "0":
+                    as_params.append(f"TEMP = {temp_space}")
+                elif temp_space_orig := db_data.get("temp_space"):
+                    as_params.append(f"TEMP = {temp_space_orig}")
+            elif temp_space_orig := db_data.get("temp_space"):
+                as_params.append(f"TEMP = {temp_space_orig}")
+    else:
+        # Fallback to original space values
+        if perm_space := db_data.get("perm_space"):
+            as_params.append(f"PERM = {perm_space}")
+        
+        if spool_space := db_data.get("spool_space"):
+            as_params.append(f"SPOOL = {spool_space}")
+        
+        # TEMP is only valid for CREATE USER, not CREATE DATABASE
+        if kind == "user" and (temp_space := db_data.get("temp_space")):
+            as_params.append(f"TEMP = {temp_space}")
     
     if as_params:
         ddl += " AS " + ", ".join(as_params)
@@ -105,12 +346,17 @@ def _generate_database_ddl(db_data: dict[str, Any]) -> list[str]:
     return statements
 
 
-def _generate_user_ddl(user_data: dict[str, Any]) -> list[str]:
+def _generate_user_ddl(
+    user_data: dict[str, Any],
+    cumulative_space_map: dict[str, dict[str, str]] | None = None,
+) -> list[str]:
     """
     Generate CREATE USER DDL from configuration.
     
     Args:
         user_data: User configuration data
+        cumulative_space_map: Optional mapping of object names to cumulative space
+            (includes space needed for all descendants)
         
     Returns:
         List of DDL statements
@@ -123,8 +369,25 @@ def _generate_user_ddl(user_data: dict[str, Any]) -> list[str]:
     # AS clause: Only PERM and PASSWORD belong here
     as_params = []
     
-    if perm_space := user_data.get("perm_space"):
-        as_params.append(f"PERM = {perm_space}")
+    # Use cumulative space if available, otherwise use configured space
+    if cumulative_space_map and name in cumulative_space_map:
+        cumulative = cumulative_space_map[name]
+        logger.debug(f"Using cumulative space for {name}: {cumulative}")
+        
+        # For PERM space: use cumulative if > 0, otherwise fallback to original config
+        if perm_space := cumulative.get("perm_space"):
+            if perm_space != "0":
+                as_params.append(f"PERM = {perm_space}")
+            elif perm_space_orig := user_data.get("perm_space"):
+                # Cumulative is 0 but original config has value - use original
+                as_params.append(f"PERM = {perm_space_orig}")
+        elif perm_space_orig := user_data.get("perm_space"):
+            # No cumulative but original exists - use original
+            as_params.append(f"PERM = {perm_space_orig}")
+    else:
+        # Fallback to original space value
+        if perm_space := user_data.get("perm_space"):
+            as_params.append(f"PERM = {perm_space}")
     
     # Password is required for CREATE USER
     # If redacted, use username as temporary password
@@ -144,11 +407,34 @@ def _generate_user_ddl(user_data: dict[str, Any]) -> list[str]:
     # These are: SPOOL, TEMPORARY, DEFAULT DATABASE, PROFILE, ACCOUNT, etc.
     user_attrs = []
     
-    if spool_space := user_data.get("spool_space"):
-        user_attrs.append(f"SPOOL = {spool_space}")
-    
-    if temp_space := user_data.get("temp_space"):
-        user_attrs.append(f"TEMPORARY = {temp_space}")
+    # Use cumulative space if available for SPOOL and TEMP
+    if cumulative_space_map and name in cumulative_space_map:
+        cumulative = cumulative_space_map[name]
+        
+        # For SPOOL space: use cumulative if > 0, otherwise fallback to original
+        if spool_space := cumulative.get("spool_space"):
+            if spool_space != "0":
+                user_attrs.append(f"SPOOL = {spool_space}")
+            elif spool_space_orig := user_data.get("spool_space"):
+                user_attrs.append(f"SPOOL = {spool_space_orig}")
+        elif spool_space_orig := user_data.get("spool_space"):
+            user_attrs.append(f"SPOOL = {spool_space_orig}")
+        
+        # For TEMP space: use cumulative if > 0, otherwise fallback to original
+        if temp_space := cumulative.get("temp_space"):
+            if temp_space != "0":
+                user_attrs.append(f"TEMPORARY = {temp_space}")
+            elif temp_space_orig := user_data.get("temp_space"):
+                user_attrs.append(f"TEMPORARY = {temp_space_orig}")
+        elif temp_space_orig := user_data.get("temp_space"):
+            user_attrs.append(f"TEMPORARY = {temp_space_orig}")
+    else:
+        # Fallback to original space values
+        if spool_space := user_data.get("spool_space"):
+            user_attrs.append(f"SPOOL = {spool_space}")
+        
+        if temp_space := user_data.get("temp_space"):
+            user_attrs.append(f"TEMPORARY = {temp_space}")
     
     if default_db := user_data.get("default_database"):
         user_attrs.append(f'DEFAULT DATABASE = "{default_db}"')
@@ -573,9 +859,19 @@ def _deploy_single_database(
     ext: AbstractDBI,
     dry_run: bool,
     if_exists: str = SKIP_STRATEGY,
+    cumulative_space_map: dict[str, dict[str, str]] | None = None,
 ) -> tuple[bool, dict[str, Any], str | None]:
     """
     Deploy a single database.
+    
+    Args:
+        filepath: Path to database TOML file
+        tgr: Tagger for variable expansion
+        env_name: Target environment name
+        ext: Database interface
+        dry_run: Dry run mode
+        if_exists: Conflict strategy
+        cumulative_space_map: Optional mapping of cumulative space for all objects
     
     Returns:
         (success, object_info, error_message)
@@ -598,7 +894,7 @@ def _deploy_single_database(
                 ext.deploy_statements([f'DROP DATABASE "{db_name}";'])
             # RAISE_STRATEGY will fail naturally when trying to create
         
-        ddl_statements = _generate_database_ddl(data)
+        ddl_statements = _generate_database_ddl(data, cumulative_space_map)
         
         if dry_run:
             logger.info(f"[DRY-RUN] Would execute:\n" + "\n".join(ddl_statements))
@@ -648,9 +944,19 @@ def _deploy_single_user(
     ext: AbstractDBI,
     dry_run: bool,
     if_exists: str = SKIP_STRATEGY,
+    cumulative_space_map: dict[str, dict[str, str]] | None = None,
 ) -> tuple[bool, dict[str, Any], str | None]:
     """
     Deploy a single user.
+    
+    Args:
+        filepath: Path to user TOML file
+        tgr: Tagger for variable expansion
+        env_name: Target environment name
+        ext: Database interface
+        dry_run: Dry run mode
+        if_exists: Conflict strategy
+        cumulative_space_map: Optional mapping of cumulative space for all objects
     
     Returns:
         (success, object_info, error_message)
@@ -673,7 +979,7 @@ def _deploy_single_user(
                 ext.deploy_statements([f'DROP USER "{user_name}";'])
             # RAISE_STRATEGY will fail naturally when trying to create
         
-        ddl_statements = _generate_user_ddl(data)
+        ddl_statements = _generate_user_ddl(data, cumulative_space_map)
         
         if dry_run:
             logger.info(f"[DRY-RUN] Would execute:\n" + "\n".join(ddl_statements))
@@ -911,6 +1217,9 @@ def _deploy_databases_and_users_combined(
     databases can be owned by users. By deploying them together, we can
     resolve these dependencies through multiple waves.
     
+    Calculates cumulative space requirements so that parent databases/users
+    have enough space to accommodate all their descendants.
+    
     Args:
         database_files: List of database TOML files
         user_files: List of user TOML files
@@ -922,6 +1231,23 @@ def _deploy_databases_and_users_combined(
         results: Results dictionary to update
         max_waves: Maximum number of deployment waves
     """
+    # Calculate cumulative space requirements
+    logger.info("Calculating cumulative space requirements for databases and users...")
+    parent_to_children, object_data_map = _build_space_dependency_tree(
+        database_files, user_files, env_name, tgr
+    )
+    cumulative_space_map = _calculate_cumulative_space(parent_to_children, object_data_map)
+    
+    # Log cumulative space info
+    if cumulative_space_map:
+        logger.debug("Cumulative space map:")
+        for obj_name, spaces in cumulative_space_map.items():
+            orig_data = object_data_map.get(obj_name, {})
+            orig_perm = orig_data.get("perm_space", "0")
+            cum_perm = spaces.get("perm_space", "0")
+            if orig_perm != cum_perm:
+                logger.debug(f"  {obj_name}: PERM {orig_perm} -> {cum_perm} (includes descendants)")
+    
     # Combine both types with metadata about their type
     combined = [
         (f, "database", _deploy_single_database) for f in database_files
@@ -940,7 +1266,10 @@ def _deploy_databases_and_users_combined(
         deployed_in_wave = 0
         
         for filepath, obj_type, deploy_func in pending:
-            success, obj_info, error = deploy_func(filepath, tgr, env_name, ext, dry_run, if_exists)
+            # Pass cumulative_space_map to deploy function
+            success, obj_info, error = deploy_func(
+                filepath, tgr, env_name, ext, dry_run, if_exists, cumulative_space_map
+            )
             
             if success:
                 if obj_info.get("status") == "skipped":

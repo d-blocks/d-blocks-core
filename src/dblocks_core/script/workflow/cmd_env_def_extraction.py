@@ -14,6 +14,23 @@ from dblocks_core.model import config_model, meta_model
 from dblocks_core.writer import env_def_writer
 
 
+def _matches_filter(name: str, filter_pattern: str) -> bool:
+    """
+    Check if a name matches a SQL LIKE filter pattern.
+    
+    Args:
+        name: The name to check
+        filter_pattern: SQL LIKE pattern where % matches any characters
+        
+    Returns:
+        True if name matches the pattern, False otherwise
+    """
+    import re
+    # Convert SQL LIKE pattern to regex (% -> .*, escape special regex chars)
+    regex_pattern = filter_pattern.replace("%", ".*")
+    return re.match(regex_pattern, name, re.IGNORECASE) is not None
+
+
 def run_env_def_extraction(
     ctx: Context,
     env: config_model.EnvironParameters,
@@ -23,6 +40,9 @@ def run_env_def_extraction(
     repo: git.Repo | None,
     *,
     commit: bool = False,
+    filter_databases: str | None = None,
+    filter_roles: str | None = None,
+    filter_profiles: str | None = None,
 ):
     """
     Executes extraction of environment definitions from Teradata database.
@@ -40,6 +60,9 @@ def run_env_def_extraction(
         env_def_dir: Directory to store environment definitions
         repo: Git repository instance
         commit: Whether to commit changes to the repository
+        filter_databases: Optional filter mask for databases/users (SQL LIKE pattern with %)
+        filter_roles: Optional filter mask for roles (SQL LIKE pattern with %)
+        filter_profiles: Optional filter mask for profiles (SQL LIKE pattern with %)
 
     Returns:
         None
@@ -47,6 +70,14 @@ def run_env_def_extraction(
     logger.info(f"Starting environment definition extraction for: {env_name}")
     logger.info(f"Target directory: {env_def_dir}")
     logger.info(f"Root databases configured: {env.extraction.databases}")
+    
+    # Log active filters
+    if filter_databases:
+        logger.info(f"Database/user filter: {filter_databases}")
+    if filter_roles:
+        logger.info(f"Role filter: {filter_roles}")
+    if filter_profiles:
+        logger.info(f"Profile filter: {filter_profiles}")
     
     # Initialize writer
     writer = env_def_writer.EnvDefWriter(
@@ -117,6 +148,15 @@ def run_env_def_extraction(
     logger.info(f"  - Actual databases: {len(actual_databases)}")
     logger.info(f"  - Users (dbKind='U'): {len(user_databases)}")
     
+    # Apply database filter if specified (filter in Python after scoping)
+    if filter_databases:
+        original_count = len(actual_databases)
+        actual_databases = [
+            db for db in actual_databases 
+            if _matches_filter(db.database_name, filter_databases)
+        ]
+        logger.info(f"Databases after filter: {len(actual_databases)} (filtered out {original_count - len(actual_databases)})")
+    
     # Extract actual databases (not users)
     logger.info("Extracting databases...")
     for db in actual_databases:
@@ -124,7 +164,7 @@ def run_env_def_extraction(
     
     # Get all users from DBC.UsersV and determine scope
     logger.info("Retrieving all users from system...")
-    all_users = ext.get_users()
+    all_users = ext.get_users(filter_users=filter_databases)  # Apply filter at SQL level
     logger.info(f"Found {len(all_users)} total users in system")
     
     # Enrich users with owner information from all_databases (from databasesV)
@@ -153,6 +193,9 @@ def run_env_def_extraction(
     )
     logger.info(f"Users in scope: {len(users_in_scope)}")
     
+    # Note: Users were already filtered at SQL level by get_users(filter_users=filter_databases)
+    # No additional filtering needed here
+    
     # Extract users in scope
     logger.info("Extracting users...")
     for user in users_in_scope:
@@ -162,7 +205,7 @@ def run_env_def_extraction(
     
     # Extract roles
     logger.info("Extracting roles...")
-    roles = ext.get_roles()
+    roles = ext.get_roles(filter_roles=filter_roles)  # Apply filter at SQL level
     logger.info(f"Found {len(roles)} roles")
     
     for role in roles:
@@ -179,7 +222,7 @@ def run_env_def_extraction(
     
     # Extract profiles
     logger.info("Extracting profiles...")
-    profiles = ext.get_profiles()
+    profiles = ext.get_profiles(filter_profiles=filter_profiles)  # Apply filter at SQL level
     logger.info(f"Found {len(profiles)} profiles")
     
     for profile in profiles:
