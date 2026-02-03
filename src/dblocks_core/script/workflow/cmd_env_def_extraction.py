@@ -117,6 +117,12 @@ def run_env_def_extraction(
     all_databases = ext.get_databases()
     logger.info(f"Found {len(all_databases)} total databases in system")
     
+    # Get roles and profiles for tagger (before building tagger)
+    logger.info("Retrieving roles and profiles for tagger...")
+    all_roles = ext.get_roles()  # Get all roles (no filter yet)
+    all_profiles = ext.get_profiles()  # Get all profiles (no filter yet)
+    logger.info(f"Found {len(all_roles)} roles and {len(all_profiles)} profiles")
+    
     # Initialize tagger for making names environment-agnostic
     tgr = tagger.Tagger(
         env.tagging_variables,
@@ -124,9 +130,14 @@ def run_env_def_extraction(
         tagging_strip_db_with_no_rules=env.tagging_strip_db_with_no_rules,
     )
     
-    # Build tagger database replacements
-    tgr.build(databases=[db.database_name for db in all_databases])
-    logger.info(f"Tagger initialized with {len(tgr.database_replacements)} database name mappings")
+    # Build tagger with databases, roles, and profiles
+    all_names = (
+        [db.database_name for db in all_databases] +
+        [role.role_name for role in all_roles] +
+        [profile.profile_name for profile in all_profiles]
+    )
+    tgr.build(databases=all_names)
+    logger.info(f"Tagger initialized with {len(tgr.database_replacements)} name mappings (databases + roles + profiles)")
     
     # Apply scoping logic - only extract databases in scope
     databases_in_scope = _get_databases_in_scope(
@@ -205,10 +216,15 @@ def run_env_def_extraction(
     
     # Extract roles
     logger.info("Extracting roles...")
-    roles = ext.get_roles(filter_roles=filter_roles)  # Apply filter at SQL level
-    logger.info(f"Found {len(roles)} roles")
+    # Apply filter to roles (already fetched above for tagger)
+    if filter_roles:
+        roles_to_extract = [r for r in all_roles if _matches_filter(r.role_name, filter_roles)]
+        logger.info(f"Roles after filter: {len(roles_to_extract)} (filtered out {len(all_roles) - len(roles_to_extract)})")
+    else:
+        roles_to_extract = all_roles
     
-    for role in roles:
+    logger.info(f"Extracting {len(roles_to_extract)} roles...")
+    for role in roles_to_extract:
         writer.write_role(role, tagger=tgr)
         
         # Extract privileges for this role using AllRoleRightsV
@@ -219,10 +235,15 @@ def run_env_def_extraction(
     
     # Extract profiles
     logger.info("Extracting profiles...")
-    profiles = ext.get_profiles(filter_profiles=filter_profiles)  # Apply filter at SQL level
-    logger.info(f"Found {len(profiles)} profiles")
+    # Apply filter to profiles (already fetched above for tagger)
+    if filter_profiles:
+        profiles_to_extract = [p for p in all_profiles if _matches_filter(p.profile_name, filter_profiles)]
+        logger.info(f"Profiles after filter: {len(profiles_to_extract)} (filtered out {len(all_profiles) - len(profiles_to_extract)})")
+    else:
+        profiles_to_extract = all_profiles
     
-    for profile in profiles:
+    logger.info(f"Extracting {len(profiles_to_extract)} profiles...")
+    for profile in profiles_to_extract:
         writer.write_profile(profile, tagger=tgr)
     
     # Extract privileges for users in scope
