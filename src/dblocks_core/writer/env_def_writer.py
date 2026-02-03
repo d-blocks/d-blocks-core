@@ -500,6 +500,107 @@ class EnvDefWriter:
         else:
             logger.debug(f"No privileges to write for {priv_def.grantee_name} (all were self-privileges)")
 
+    def write_role_memberships(self, role_memberships: meta_model.DescribedRoleMemberships, tagger: Optional[tagger_module.Tagger] = None):
+        """
+        Write role memberships to user privileges TOML file, adding role grants to existing privileges.
+        
+        Role grants are added as [[grant]] blocks with role= instead of database=.
+        
+        Args:
+            role_memberships: DescribedRoleMemberships from meta_model
+            tagger: Optional tagger for environment-agnostic names
+        """
+        # Tag grantee name if tagger available
+        grantee_name = tagger.tag_database(role_memberships.grantee_name) if tagger else role_memberships.grantee_name
+        
+        # Role memberships go in privileges/users/ directory
+        target_dir = self.privileges_users_dir
+        self._ensure_dir(target_dir)
+        
+        filename = f"{self._sanitize_filename(grantee_name)}.toml"
+        filepath = target_dir / filename
+        
+        # Read existing file if it exists to append role grants
+        existing_grants = []
+        if filepath.exists():
+            try:
+                with open(filepath, "r", encoding=self.encoding) as f:
+                    content = f.read()
+                    # Extract existing [[grant]] blocks
+                    if "[[grant]]" in content:
+                        # Parse to preserve existing grants
+                        import tomllib
+                        with open(filepath, "rb") as fb:
+                            existing_data = tomllib.load(fb)
+                            if "grant" in existing_data:
+                                existing_grants = existing_data["grant"]
+            except Exception as e:
+                logger.warning(f"Could not read existing file {filepath}: {e}")
+        
+        # Build TOML data structure
+        data = {
+            "grantee_name": grantee_name,
+            "grantee_type": role_memberships.grantee_type,
+            "kind": "privileges",
+        }
+        
+        # Create grant blocks for roles
+        role_grant_blocks = []
+        for role_grant in sorted(role_memberships.role_grants, key=lambda r: r.role_name):
+            grant_block = {
+                "role": role_grant.role_name
+            }
+            
+            # Add with_admin array based on flag
+            if role_grant.with_admin:
+                grant_block["with_admin"] = ["ADMIN"]
+            
+            role_grant_blocks.append(grant_block)
+        
+        # Merge with existing grants (privileges come first, then roles)
+        all_grant_blocks = existing_grants + role_grant_blocks if existing_grants else role_grant_blocks
+        
+        if all_grant_blocks:
+            # Manual TOML formatting
+            toml_lines = []
+            toml_lines.append(f'grantee_name = "{data["grantee_name"]}"')
+            toml_lines.append(f'grantee_type = "{data["grantee_type"]}"')
+            toml_lines.append(f'kind = "{data["kind"]}"')
+            toml_lines.append("")
+            
+            # Write all grant blocks
+            for grant_block in all_grant_blocks:
+                toml_lines.append("[[grant]]")
+                
+                # Check if it's a role grant or privilege grant
+                if "role" in grant_block:
+                    toml_lines.append(f'role = "{grant_block["role"]}"')
+                    if "with_admin" in grant_block:
+                        admin_str = ", ".join([f'"{a}"' for a in grant_block["with_admin"]])
+                        toml_lines.append(f'with_admin = [{admin_str}]')
+                else:
+                    # Existing privilege grant
+                    if "database" in grant_block:
+                        toml_lines.append(f'database = "{grant_block["database"]}"')
+                    if "object" in grant_block:
+                        toml_lines.append(f'object = "{grant_block["object"]}"')
+                    if "privileges" in grant_block:
+                        privs = grant_block["privileges"]
+                        privs_str = ", ".join([f'"{p}"' for p in privs])
+                        toml_lines.append(f'privileges = [{privs_str}]')
+                    if "privileges_with_grant_option" in grant_block:
+                        privs = grant_block["privileges_with_grant_option"]
+                        privs_str = ", ".join([f'"{p}"' for p in privs])
+                        toml_lines.append(f'privileges_with_grant_option = [{privs_str}]')
+                
+                toml_lines.append("")
+            
+            toml_str = "\n".join(toml_lines)
+            filepath.write_text(toml_str, encoding=self.encoding)
+            logger.debug(f"Wrote role memberships to: {filepath}")
+        else:
+            logger.debug(f"No role memberships to write for {role_memberships.grantee_name}")
+
 
 def load_env_def_from_toml(filepath: Path) -> dict[str, Any]:
     """

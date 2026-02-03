@@ -1457,6 +1457,98 @@ class TeraDBI(contract.AbstractDBI):
                 privilege_details=meta_model.DescribedTeradataPrivileges(),
             )
 
+    @translate_error()
+    def get_role_privileges(
+        self, 
+        role_name: str
+    ) -> meta_model.DescribedPrivileges:
+        """
+        Retrieves all privileges for a specific role from DBC.AllRoleRightsV.
+        
+        Args:
+            role_name: Name of the role
+            
+        Returns:
+            DescribedPrivileges object containing all privilege grants for the role
+        """
+        sql = """
+            SELECT
+                RoleName as role_name,
+                DatabaseName as object_database,
+                TableName as object_name,
+                AccessRight as privilege_type
+            FROM DBC.AllRoleRightsV
+            WHERE RoleName = :role_name
+            ORDER BY DatabaseName, TableName, AccessRight
+        """
+        stmt = sa.text(sql).bindparams(role_name=role_name)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            privilege_grants = []
+            for row in rows:
+                privilege_grants.append(
+                    meta_model.PrivilegeGrant(
+                        privilege_type=row.privilege_type.strip() if row.privilege_type else "",
+                        object_database=row.object_database.strip() if row.object_database else None,
+                        object_name=row.object_name.strip() if row.object_name else None,
+                        object_type=None,
+                        grantable=False,  # AllRoleRightsV doesn't provide grant option info
+                    )
+                )
+            
+            return meta_model.DescribedPrivileges(
+                grantee_name=role_name,
+                grantee_type="role",
+                privileges=privilege_grants,
+                privilege_details=meta_model.DescribedTeradataPrivileges(),
+            )
+
+    @translate_error()
+    def get_role_memberships(
+        self, 
+        grantee_name: str
+    ) -> meta_model.DescribedRoleMemberships:
+        """
+        Retrieves all role memberships for a specific user from DBC.RoleMembersV.
+        
+        Args:
+            grantee_name: Name of the user
+            
+        Returns:
+            DescribedRoleMemberships object containing all role assignments
+        """
+        sql = """
+            SELECT
+                RoleName as role_name,
+                Grantee as grantee,
+                WithAdmin as with_admin
+            FROM DBC.RoleMembersV
+            WHERE Grantee = :grantee_name
+            ORDER BY RoleName
+        """
+        stmt = sa.text(sql).bindparams(grantee_name=grantee_name)
+        
+        with self.engine.connect() as con:
+            rows = con.execute(stmt).fetchall()
+            role_grants = []
+            for row in rows:
+                with_admin_value = row.with_admin.strip().upper() if row.with_admin else ""
+                is_with_admin = with_admin_value == 'Y'
+                
+                role_grants.append(
+                    meta_model.RoleGrant(
+                        role_name=row.role_name.strip() if row.role_name else "",
+                        with_admin=is_with_admin,
+                    )
+                )
+            
+            return meta_model.DescribedRoleMemberships(
+                grantee_name=grantee_name,
+                grantee_type="user",
+                role_grants=role_grants,
+            )
+
 
 # dbc.tablesV.tableKind: https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/Data-Dictionary/View-Column-Values/TableKind-Column
 # ----- PRIO 1

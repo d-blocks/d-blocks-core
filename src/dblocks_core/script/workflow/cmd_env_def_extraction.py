@@ -211,11 +211,8 @@ def run_env_def_extraction(
     for role in roles:
         writer.write_role(role, tagger=tgr)
         
-        # Extract privileges for this role
-        privileges = ext.get_privileges_for_grantee(
-            grantee_name=role.role_name,
-            grantee_type="role"
-        )
+        # Extract privileges for this role using AllRoleRightsV
+        privileges = ext.get_role_privileges(role_name=role.role_name)
         
         if privileges.privileges:  # Only write if there are privileges
             writer.write_privileges(privileges, tagger=tgr)
@@ -238,6 +235,12 @@ def run_env_def_extraction(
         
         if privileges.privileges:  # Only write if there are privileges
             writer.write_privileges(privileges, tagger=tgr)
+        
+        # Extract role memberships for this user
+        role_memberships = ext.get_role_memberships(grantee_name=user.user_name)
+        
+        if role_memberships.role_grants:  # Only write if user has roles
+            writer.write_role_memberships(role_memberships, tagger=tgr)
     
     # Extract privileges for databases in scope (actual databases, not users)
     logger.info("Extracting database privileges...")

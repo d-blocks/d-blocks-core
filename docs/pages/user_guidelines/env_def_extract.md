@@ -135,6 +135,9 @@ env_definition/
     ├── databases/
     │   ├── sales_db.toml
     │   └── sales_staging_db.toml
+    ├── roles/
+    │   ├── app_role.toml
+    │   └── admin_role.toml
     └── users/
         ├── app_user.toml
         └── etl_user.toml
@@ -250,6 +253,33 @@ privileges_with_grant_option = ["SELECT"]
   - `privileges` - List of privileges without GRANT OPTION
   - `privileges_with_grant_option` - List of privileges with GRANT OPTION
 
+#### **Role Privileges** (`privileges/roles/<role_name>.toml`)
+Defines what privileges a role has been granted on databases (extracted from `DBC.AllRoleRightsV`):
+
+```toml
+grantee_name = "app_role"
+grantee_type = "role"
+kind = "privileges"
+
+[[grant]]
+database = "sales_db"
+privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"]
+
+[[grant]]
+database = "staging_db"
+privileges = ["SELECT"]
+```
+
+**Fields:**
+- `grantee_name` - Name of the role receiving privileges
+- `grantee_type` - Type of grantee (always "role" for role privileges)
+- `kind` - Object type (always "privileges")
+- `[[grant]]` - Array of grant entries (one per target database)
+  - `database` - Target database where privileges are granted
+  - `privileges` - List of privileges (note: `DBC.AllRoleRightsV` doesn't provide GRANT OPTION information)
+
+**Note:** Role privileges are extracted from `DBC.AllRoleRightsV`, which shows all privileges assigned to roles but doesn't indicate whether they were granted WITH GRANT OPTION.
+
 #### **User Privileges** (`privileges/users/<user_name>.toml`)
 Defines what privileges a user has been granted on databases:
 
@@ -265,16 +295,27 @@ privileges = ["CREATE TABLE", "CREATE VIEW", "DROP TABLE"]
 [[grant]]
 database = "staging_db"
 privileges_with_grant_option = ["SELECT", "INSERT"]
+
+[[grant]]
+role = "app_role"
+
+[[grant]]
+role = "admin_role"
+with_admin = ["ADMIN"]
 ```
 
 **Fields:**
-- `grantee_name` - Name of the user receiving privileges
+- `grantee_name` - Name of the user receiving privileges/roles
 - `grantee_type` - Type of grantee (always "user" for user privileges)
 - `kind` - Object type (always "privileges")
-- `[[grant]]` - Array of grant entries (one per target database)
-  - `database` - Target database where privileges are granted
-  - `privileges` - List of privileges without GRANT OPTION
-  - `privileges_with_grant_option` - List of privileges with GRANT OPTION
+- `[[grant]]` - Array of grant entries (privileges and roles)
+  - **For database privileges:**
+    - `database` - Target database where privileges are granted
+    - `privileges` - List of privileges without GRANT OPTION
+    - `privileges_with_grant_option` - List of privileges with GRANT OPTION
+  - **For role assignments:**
+    - `role` - Name of the role granted to the user
+    - `with_admin` - Optional array containing ["ADMIN"] if granted WITH ADMIN OPTION
 
 ### Privilege Types
 

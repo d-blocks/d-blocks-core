@@ -533,6 +533,10 @@ def _generate_privilege_ddl(priv_data: dict[str, Any], tgr: tagger.Tagger) -> li
     """
     Generate GRANT statements from privileges configuration.
     
+    Handles both database privileges and role assignments:
+    - Database privileges: GRANT privilege ON database TO grantee
+    - Role assignments: GRANT role TO grantee [WITH ADMIN OPTION]
+    
     Args:
         priv_data: Privilege configuration data with [[grant]] blocks
         tgr: Tagger for variable expansion
@@ -541,48 +545,65 @@ def _generate_privilege_ddl(priv_data: dict[str, Any], tgr: tagger.Tagger) -> li
         List of GRANT statements
     """
     grantee_name = priv_data["grantee_name"]
+    grantee_type = priv_data.get("grantee_type", "user")
     grant_blocks = priv_data.get("grant", [])
     
     ddl_statements = []
     
     for grant_block in grant_blocks:
-        database = grant_block.get("database")
-        obj = grant_block.get("object")
-        privileges = grant_block.get("privileges", [])
-        privileges_with_grant = grant_block.get("privileges_with_grant_option", [])
+        # Check if this is a role grant or database privilege grant
+        role = grant_block.get("role")
         
-        # Expand variables in database and object names
-        if database:
-            database = tgr.expand_statement(database)
-        if obj:
-            obj = tgr.expand_statement(obj)
-        
-        # Generate GRANT statements for privileges without grant option
-        for priv in privileges:
-            grant_stmt = f"GRANT {priv}"
+        if role:
+            # Role assignment: GRANT role TO user [WITH ADMIN OPTION]
+            grant_stmt = f'GRANT "{role}" TO "{grantee_name}"'
             
-            if database and obj:
-                grant_stmt += f' ON "{database}"."{obj}"'
-            elif database:
-                grant_stmt += f' ON "{database}"'
+            # Check for WITH ADMIN OPTION
+            if with_admin := grant_block.get("with_admin"):
+                if "ADMIN" in with_admin:
+                    grant_stmt += " WITH ADMIN OPTION"
             
-            grant_stmt += f' TO "{grantee_name}"'
             grant_stmt += ";"
             ddl_statements.append(grant_stmt)
-        
-        # Generate GRANT statements for privileges with grant option
-        for priv in privileges_with_grant:
-            grant_stmt = f"GRANT {priv}"
+        else:
+            # Database privilege grant
+            database = grant_block.get("database")
+            obj = grant_block.get("object")
+            privileges = grant_block.get("privileges", [])
+            privileges_with_grant = grant_block.get("privileges_with_grant_option", [])
             
-            if database and obj:
-                grant_stmt += f' ON "{database}"."{obj}"'
-            elif database:
-                grant_stmt += f' ON "{database}"'
+            # Expand variables in database and object names
+            if database:
+                database = tgr.expand_statement(database)
+            if obj:
+                obj = tgr.expand_statement(obj)
             
-            grant_stmt += f' TO "{grantee_name}"'
-            grant_stmt += " WITH GRANT OPTION"
-            grant_stmt += ";"
-            ddl_statements.append(grant_stmt)
+            # Generate GRANT statements for privileges without grant option
+            for priv in privileges:
+                grant_stmt = f"GRANT {priv}"
+                
+                if database and obj:
+                    grant_stmt += f' ON "{database}"."{obj}"'
+                elif database:
+                    grant_stmt += f' ON "{database}"'
+                
+                grant_stmt += f' TO "{grantee_name}"'
+                grant_stmt += ";"
+                ddl_statements.append(grant_stmt)
+            
+            # Generate GRANT statements for privileges with grant option
+            for priv in privileges_with_grant:
+                grant_stmt = f"GRANT {priv}"
+                
+                if database and obj:
+                    grant_stmt += f' ON "{database}"."{obj}"'
+                elif database:
+                    grant_stmt += f' ON "{database}"'
+                
+                grant_stmt += f' TO "{grantee_name}"'
+                grant_stmt += " WITH GRANT OPTION"
+                grant_stmt += ";"
+                ddl_statements.append(grant_stmt)
     
     return ddl_statements
 

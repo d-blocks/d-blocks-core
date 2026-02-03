@@ -87,15 +87,28 @@ d-bee env-def-deploy development ./env_definition --assume-yes
 ## Deployment Process
 
 ### **Wave-Based Dependency Resolution**
-The deployment engine automatically resolves dependencies between objects and deploys them in multiple waves:
+The deployment engine automatically resolves dependencies between objects and deploys them in a specific order:
 
-1. **Wave 1:** Root-level databases (with DBC as owner)
-2. **Wave 2:** First-level child databases (owned by Wave 1 databases)
-3. **Wave 3:** Second-level child databases, and so on...
-4. **Roles and Profiles:** Deployed before users that reference them
-5. **Users:** Deployed last, after all dependencies are in place
+**Phase 1: Profiles**
+- Profiles are deployed first (no dependencies on other objects)
 
-This ensures that **parent objects always exist before their children**, preventing dependency errors.
+**Phase 2: Databases and Users**
+- Databases and users are deployed together using wave-based resolution
+- This handles circular dependencies where users can own databases and vice versa
+- Parent objects are deployed before their children within multiple waves
+
+**Phase 3: Roles**
+- Roles are created after databases and users exist
+- Role definitions are simple (just the role name)
+
+**Phase 4: Privileges (Database Privileges and Role Assignments)**
+- **Role Privileges**: Grants database privileges to roles (from `privileges/roles/`)
+- **User Privileges**: Grants database privileges to users (from `privileges/users/`)
+- **User Role Assignments**: Assigns roles to users (also from `privileges/users/`)
+- **Database Privileges**: Grants privileges between databases (from `privileges/databases/`)
+- Deployed with retry logic to handle dependencies
+
+This ensures that **all objects exist before privileges are granted**, preventing dependency errors.
 
 ### **Cumulative Space Calculation**
 One of the key features is **automatic space calculation** for parent databases:
@@ -120,6 +133,68 @@ sales_db (original PERM: 10GB)
 
 Cumulative PERM for sales_db: 5GB + 8GB = 13GB
 Deployed with: PERM = 13GB (using cumulative, not original 10GB)
+```
+
+## Role and Privilege Deployment
+
+### **Role Creation**
+Roles are deployed in Phase 3, after databases and users are created:
+
+```sql
+CREATE ROLE "app_role";
+```
+
+### **Granting Privileges to Roles**
+After roles are created, database privileges are granted to them (Phase 4):
+
+```sql
+-- From privileges/roles/app_role.toml
+GRANT SELECT ON "sales_db" TO "app_role";
+GRANT INSERT ON "sales_db" TO "app_role";
+GRANT UPDATE ON "sales_db" TO "app_role";
+```
+
+**Note:** Role privileges are extracted from `DBC.AllRoleRightsV` during extraction and stored in `privileges/roles/<role_name>.toml`.
+
+### **Assigning Roles to Users**
+Finally, roles are assigned to users (Phase 4):
+
+```sql
+-- From privileges/users/app_user.toml
+GRANT "app_role" TO "app_user";
+GRANT "admin_role" TO "app_user" WITH ADMIN OPTION;
+```
+
+**WITH ADMIN OPTION** allows the user to grant the role to other users. This is indicated by the `with_admin = ["ADMIN"]` array in the TOML file.
+
+### **Complete Example TOML for User with Roles:**
+```toml
+# privileges/users/app_user.toml
+grantee_name = "app_user"
+grantee_type = "user"
+kind = "privileges"
+
+# Database privileges
+[[grant]]
+database = "sales_db"
+privileges = ["CREATE TABLE", "CREATE VIEW"]
+
+# Role assignment without admin option
+[[grant]]
+role = "app_role"
+
+# Role assignment with admin option
+[[grant]]
+role = "admin_role"
+with_admin = ["ADMIN"]
+```
+
+This generates:
+```sql
+GRANT CREATE TABLE ON "sales_db" TO "app_user";
+GRANT CREATE VIEW ON "sales_db" TO "app_user";
+GRANT "app_role" TO "app_user";
+GRANT "admin_role" TO "app_user" WITH ADMIN OPTION;
 ```
 
 ## Common Deployment Scenarios

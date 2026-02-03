@@ -371,3 +371,37 @@ class DescribedPrivileges:
     grantee_type: str  # 'role', 'user', or 'database'
     privileges: list[PrivilegeGrant] = field(factory=list)
     privilege_details: DescribedTeradataPrivileges | None = field(default=None)
+
+
+# ============================================================================
+# Role Membership Models
+# ============================================================================
+
+
+@define
+class RoleGrant:
+    """
+    Represents a role granted to a user.
+    
+    Attributes:
+        role_name: Name of the role
+        with_admin: Whether the role is granted WITH ADMIN OPTION
+    """
+    role_name: str
+    with_admin: bool = field(default=False)
+
+
+@define
+class DescribedRoleMemberships:
+    """
+    Represents role memberships assigned to a user.
+    
+    Attributes:
+        grantee_name: Name of the user receiving role grants
+        grantee_type: Type - always 'user' for role memberships
+        role_grants: List of role grants
+    """
+    grantee_name: str
+    grantee_type: str  # always 'user'
+    role_grants: list[RoleGrant] = field(factory=list)
+
