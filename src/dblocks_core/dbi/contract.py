@@ -133,11 +133,14 @@ class AbstractDBI(ABC):
         ...
 
     @abstractmethod
-    def get_databases(self) -> list[meta_model.DescribedDatabase]:
+    def get_databases(self, filter_databases: str | None = None) -> list[meta_model.DescribedDatabase]:
         """
         Returns information about databases existing in the platform,
         regardless of the environment.
         Does NOT provide values for env_database_name
+
+        Args:
+            filter_databases: Optional filter for database names (using SQL LIKE pattern)
 
         Returns:
             list[meta_model.DescribedDatabase]: list of databases

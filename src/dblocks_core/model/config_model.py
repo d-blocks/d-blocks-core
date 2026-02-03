@@ -141,6 +141,9 @@ class WriterParameters:
     target_dir: Path = field(
         converter=Path, default=Path(".")
     )  # defaults to Config.metadata_dir
+    env_def_dir: Path = field(
+        converter=Path, default=Path("env_def")
+    )  # directory for environment definitions (databases, users, roles, profiles, privileges)
     encoding: str = field(default="utf-8")
     errors: str = field(default="strict")
 
