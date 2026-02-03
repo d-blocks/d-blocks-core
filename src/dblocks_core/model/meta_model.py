@@ -204,3 +204,204 @@ class ListedEnv:
     all_databases: list[DescribedDatabase]
     dbs_in_scope: list[DescribedDatabase]
     all_objects: list[IdentifiedObject]
+
+
+# ============================================================================
+# User Models
+# ============================================================================
+
+
+@define
+class DescribedTeradataUser:
+    """
+    Represents Teradata-specific user attributes.
+    
+    Attributes:
+        owner_name: Owner database name
+        perm_space: Permanent space allocation in bytes
+        spool_space: Spool space allocation in bytes
+        temp_space: Temporary space allocation in bytes
+        default_database: Default database for the user
+        profile: Profile name assigned to user
+        account: Default account string
+        db_kind: Database kind (should be 'U' for user)
+    """
+    owner_name: str
+    perm_space: int | None = field(default=None)
+    spool_space: int | None = field(default=None)
+    temp_space: int | None = field(default=None)
+    default_database: str | None = field(default=None)
+    profile: str | None = field(default=None)
+    account: str | None = field(default=None)
+    db_kind: str = field(default="U")
+    platform: str = field(default=TERADATA)
+
+
+@define
+class DescribedUser:
+    """
+    Represents a database user (platform-agnostic).
+    
+    Attributes:
+        user_name: Name of the user
+        comment_string: Optional comment/description
+        user_details: Platform-specific user details
+        password: Optional password (for deployment, not extraction)
+    """
+    user_name: str
+    comment_string: str | None = field(default=None)
+    user_details: DescribedTeradataUser | None = field(default=None)
+    password: str | None = field(default=None)
+
+
+# ============================================================================
+# Role Models
+# ============================================================================
+
+
+@define
+class DescribedTeradataRole:
+    """
+    Represents Teradata-specific role attributes.
+    Currently roles don't have platform-specific attributes beyond comment,
+    but this structure allows for future extensions.
+    """
+    platform: str = field(default=TERADATA)
+
+
+@define
+class DescribedRole:
+    """
+    Represents a database role (platform-agnostic).
+    
+    Attributes:
+        role_name: Name of the role
+        comment_string: Optional comment/description
+        role_details: Platform-specific role details
+    """
+    role_name: str
+    comment_string: str | None = field(default=None)
+    role_details: DescribedTeradataRole | None = field(default=None)
+
+
+# ============================================================================
+# Profile Models
+# ============================================================================
+
+
+@define
+class DescribedTeradataProfile:
+    """
+    Represents Teradata-specific profile attributes.
+    
+    Attributes:
+        spool_space: Spool space limit in bytes
+        temp_space: Temporary space limit in bytes
+        account: Default account string
+        default_database: Default database
+    """
+    spool_space: int | None = field(default=None)
+    temp_space: int | None = field(default=None)
+    account: str | None = field(default=None)
+    default_database: str | None = field(default=None)
+    platform: str = field(default=TERADATA)
+
+
+@define
+class DescribedProfile:
+    """
+    Represents a database profile (platform-agnostic).
+    
+    Attributes:
+        profile_name: Name of the profile
+        comment_string: Optional comment/description
+        profile_details: Platform-specific profile details
+    """
+    profile_name: str
+    comment_string: str | None = field(default=None)
+    profile_details: DescribedTeradataProfile | None = field(default=None)
+
+
+# ============================================================================
+# Privilege Models
+# ============================================================================
+
+
+@define
+class PrivilegeGrant:
+    """
+    Represents a single privilege grant.
+    
+    Attributes:
+        privilege_type: Type of privilege (e.g., SELECT, INSERT, EXECUTE, etc.)
+        object_database: Database containing the object
+        object_name: Name of the object on which privilege is granted
+        object_type: Type of object (TABLE, VIEW, PROCEDURE, etc.)
+        grantable: Whether the privilege can be granted to others
+    """
+    privilege_type: str
+    object_database: str | None = field(default=None)
+    object_name: str | None = field(default=None)
+    object_type: str | None = field(default=None)
+    grantable: bool = field(default=False)
+
+
+@define
+class DescribedTeradataPrivileges:
+    """
+    Represents Teradata-specific privilege attributes.
+    Currently privileges don't have platform-specific attributes beyond the grants,
+    but this structure allows for future extensions.
+    """
+    platform: str = field(default=TERADATA)
+
+
+@define
+class DescribedPrivileges:
+    """
+    Represents privileges assigned to a grantee (role, user, or database).
+    
+    Attributes:
+        grantee_name: Name of the role/user/database receiving privileges
+        grantee_type: Type - 'role', 'user', or 'database'
+        privileges: List of privilege grants
+        privilege_details: Platform-specific privilege details
+    """
+    grantee_name: str
+    grantee_type: str  # 'role', 'user', or 'database'
+    privileges: list[PrivilegeGrant] = field(factory=list)
+    privilege_details: DescribedTeradataPrivileges | None = field(default=None)
+
+
+# ============================================================================
+# Role Membership Models
+# ============================================================================
+
+
+@define
+class RoleGrant:
+    """
+    Represents a role granted to a user.
+    
+    Attributes:
+        role_name: Name of the role
+        with_admin: Whether the role is granted WITH ADMIN OPTION
+    """
+    role_name: str
+    with_admin: bool = field(default=False)
+
+
+@define
+class DescribedRoleMemberships:
+    """
+    Represents role memberships assigned to a user.
+    
+    Attributes:
+        grantee_name: Name of the user receiving role grants
+        grantee_type: Type - always 'user' for role memberships
+        role_grants: List of role grants
+    """
+    grantee_name: str
+    grantee_type: str  # always 'user'
+    role_grants: list[RoleGrant] = field(factory=list)
+
