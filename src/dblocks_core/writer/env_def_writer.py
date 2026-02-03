@@ -547,8 +547,11 @@ class EnvDefWriter:
         # Create grant blocks for roles
         role_grant_blocks = []
         for role_grant in sorted(role_memberships.role_grants, key=lambda r: r.role_name):
+            # Tag role name if tagger available
+            tagged_role_name = tagger.tag_database(role_grant.role_name) if tagger else role_grant.role_name
+            
             grant_block = {
-                "role": role_grant.role_name
+                "role": tagged_role_name
             }
             
             # Add with_admin array based on flag

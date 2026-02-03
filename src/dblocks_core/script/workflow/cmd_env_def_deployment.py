@@ -555,6 +555,9 @@ def _generate_privilege_ddl(priv_data: dict[str, Any], tgr: tagger.Tagger) -> li
         role = grant_block.get("role")
         
         if role:
+            # Expand variables in role name
+            role = tgr.expand_statement(role)
+            
             # Role assignment: GRANT role TO user [WITH ADMIN OPTION]
             grant_stmt = f'GRANT "{role}" TO "{grantee_name}"'
             
