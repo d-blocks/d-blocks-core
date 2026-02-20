@@ -1202,6 +1202,38 @@ class Repo:
         
         return None
 
+    def get_file_content_at_commit(
+        self,
+        commit: str,
+        file_path: str | Path,
+    ) -> str | None:
+        """Retrieve the content of a file at a specific commit.
+
+        Uses ``git show <commit>:<path>`` to read the file content as it
+        existed at the given commit.
+
+        Args:
+            commit: The commit hash (or branch name / tag).
+            file_path: Path to the file relative to the repository root.
+
+        Returns:
+            The file content as a string, or ``None`` if the file did
+            not exist at that commit.
+        """
+
+        rel_path = Path(file_path).as_posix()
+        raises = self.raise_on_error
+        self.raise_on_error = False
+        result = self.run_git_cmd("show", f"{commit}:{rel_path}")
+        self.raise_on_error = raises
+        if result.code != 0:
+            logger.debug(
+                f"file not found at commit {commit}: {rel_path} "
+                f"(stderr: {result.err.strip()[:120]})"
+            )
+            return None
+        return result.out
+
     def run_git_cmd(self, *args) -> GitResult:
         """
         Executes a Git command within the repository's directory and returns the result.

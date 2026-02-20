@@ -1,4 +1,5 @@
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable, Tuple
 
@@ -9,6 +10,8 @@ from dblocks_core import exc
 from dblocks_core.config.config import logger
 from dblocks_core.git import git
 from dblocks_core.model import config_model
+from dblocks_core.packager import change_script_gen, release_notes, table_differ
+from dblocks_core.parse import table_parser
 from dblocks_core.writer import fsystem
 
 console = Console()
@@ -19,6 +22,56 @@ TO_COPY = (
     git.FileStatus.MODIFIED,
     git.FileStatus.UNTRACKED,
 )
+
+# ---------------------------------------------------------------------------
+# Package folder ordering
+# ---------------------------------------------------------------------------
+
+# Double-digit prefixed folders that determine deployment order:
+#  010 - tables (deployed first, uses change scripts)
+#  020 - views and indices
+#  030 - executables (procedures, macros, functions, triggers)
+#  050 - generic sql
+#  080 - drop scripts for deleted objects
+#  090 - drop backup tables created during deployment
+PKG_STP_TABLES = "010-tables"
+PKG_STP_VIEWS_INDICES = "020-views-indices"
+PKG_STP_EXECUTABLES = "030-executables"
+PKG_STP_GENERIC_SQL = "050-sql"
+PKG_STP_DROPS = "080-drops"
+PKG_STP_DROP_BACKUPS = "090-drop-backups"
+
+_EXT_TO_PKG_STEP: dict[str, str] = {
+    fsystem.TABLE_SUFFIX: PKG_STP_TABLES,
+    fsystem.VIEW_SUFFIX: PKG_STP_VIEWS_INDICES,
+    fsystem.JIDX_SUFFIX: PKG_STP_VIEWS_INDICES,
+    fsystem.IDX_SUFFIX: PKG_STP_VIEWS_INDICES,
+    fsystem.PROC_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.MACRO_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.FUNCTION_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.FUNCTION_MAPPING_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.TRIGGER_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.TYPE_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.AUTH_SUFFIX: PKG_STP_EXECUTABLES,
+    fsystem.GENERIC_SQL_SUFFIX: PKG_STP_GENERIC_SQL,
+    fsystem.GENERIC_BTEQ_SUFFIX: PKG_STP_GENERIC_SQL,
+    fsystem.PROFILE_SUFFIX: PKG_STP_GENERIC_SQL,
+    fsystem.ROLE_SUFFIX: PKG_STP_GENERIC_SQL,
+    fsystem.DATABASE_SUFFIX: PKG_STP_GENERIC_SQL,
+}
+
+
+def _is_table_file(path: Path) -> bool:
+    """Check if the given path represents a Teradata table script."""
+    return path.suffix.lower() == fsystem.TABLE_SUFFIX
+
+
+def _is_metadata_file(path: Path, metadata_dir: Path) -> bool:
+    """Check if the file is within the metadata directory."""
+    try:
+        return path.is_relative_to(metadata_dir)
+    except (TypeError, ValueError):
+        return False
 
 
 def copy(
@@ -32,6 +85,27 @@ def copy(
     steps_subdir: Path,
     include_only: Iterable[Path | str] | None = None,
 ):
+    """Create an incremental deployment package based on git diff.
+
+    Enhanced workflow:
+
+    1. Gather the list of changed files from git.
+    2. Classify each change (table vs other, new / modified / deleted).
+    3. For **modified tables** – parse old and new DDL, compute a diff,
+       and generate the appropriate change script:
+
+       - *Structural change* → RENAME-CREATE-INSERT strategy.
+       - *Non-structural change* (stats / comments) → re-execute only the
+         changed statements.
+
+    4. For **deleted tables** – generate a RENAME … _obsolete<ts> script.
+    5. For **deleted non-table objects** – generate a DROP statement.
+    6. For **added / modified non-table objects** – copy as-is.
+    7. Organise the package into ordered step folders (010-tables first,
+       080-drops near the end, 090-drop-backups last).
+    8. Write release notes.
+    """
+
     # repo, check if it is dirty
     repo = git.repo_factory(raise_on_error=True)
     if repo is not None and repo.is_dirty():
@@ -71,20 +145,8 @@ def copy(
     # get list of changes
     changes = changes_against(repo, diff_against, diff_ident, include_only=include_only)
 
-    # prep copy from/to pairs
-    # get path relative to subdir, if list of subdirs was given
-
-    can_copy = [
-        git.FileStatus.ADDED,
-        git.FileStatus.MODIFIED,
-        git.FileStatus.COPIED,
-        git.FileStatus.RENAMED,
-        git.FileStatus.UNTRACKED,
-        git.FileStatus.UNMERGED,
-    ]
-
     if len(changes) == 0:
-        logger.warning("Empty list of changes files.")
+        logger.warning("Empty list of changed files.")
         return
 
     # target directory, ask for confirmation
@@ -99,28 +161,272 @@ def copy(
         logger.error(f"action canceled by prompt: {really}")
         return
 
-    dirs = set()
+    # resolve the baseline commit for retrieving old file versions
+    baseline_commit = _resolve_baseline_commit(repo, diff_against, diff_ident)
+
+    # fixed timestamp for the whole package (deterministic suffixes)
+    ts = datetime.now()
+
+    # process the changeset
+    all_warnings: list[str] = []
+    dirs_created: set[Path] = set()
+
+    can_copy = {
+        git.FileStatus.ADDED,
+        git.FileStatus.MODIFIED,
+        git.FileStatus.COPIED,
+        git.FileStatus.RENAMED,
+        git.FileStatus.UNTRACKED,
+        git.FileStatus.UNMERGED,
+    }
+
     for c in changes:
-        # FIXME: deletions, what to do about them
-        if c.change not in can_copy:
+        abs_metadata_dir = metadata_dir.resolve() if metadata_dir.is_absolute() else (repo.repo_dir / metadata_dir).resolve()
+        is_meta = _is_metadata_file(c.abs_path, abs_metadata_dir)
+
+        # --- DELETED files ---
+        if c.change == git.FileStatus.DELETED:
+            if not is_meta:
+                logger.debug(f"skip deleted non-metadata file: {c.rel_path}")
+                continue
+            _handle_deletion(
+                c, repo, pkg_root_dir, steps_subdir, metadata_dir,
+                ts=ts, warnings=all_warnings, dirs_created=dirs_created,
+                baseline_commit=baseline_commit,
+            )
             continue
+
+        # --- ADDED / MODIFIED / etc. ---
+        if c.change not in can_copy:
+            logger.debug(f"skip unsupported change type: {c.change}: {c.rel_path}")
+            continue
+
         copy_from = repo.repo_dir / c.rel_path
         if not copy_from.exists():
-            logger.warning(f"file does not exists: {copy_from}")
+            logger.warning(f"file does not exist: {copy_from}")
             continue
-        copy_to = pkg_root_dir / _rel_path_in_package(
-            repo_dir_absp=repo.repo_dir,
-            src_file_absp=c.abs_path,
-            metadata_dir_absp=metadata_dir,
-            steps_subdir=steps_subdir,
+
+        if is_meta and _is_table_file(c.abs_path):
+            _handle_table_change(
+                c, repo, pkg_root_dir, steps_subdir, metadata_dir,
+                ts=ts, warnings=all_warnings, dirs_created=dirs_created,
+                baseline_commit=baseline_commit,
+            )
+        else:
+            # non-table object → copy as-is
+            copy_to = pkg_root_dir / _rel_path_in_package(
+                repo_dir_absp=repo.repo_dir,
+                src_file_absp=c.abs_path,
+                metadata_dir_absp=abs_metadata_dir,
+                steps_subdir=steps_subdir,
+            )
+            _ensure_parent(copy_to, dirs_created)
+            shutil.copy(copy_from, copy_to)
+
+    # --- release notes ---
+    notes = release_notes.build_release_notes(
+        changes, package_name, warnings=all_warnings, ts=ts,
+    )
+    notes_text = release_notes.render_release_notes(notes)
+    notes_path = pkg_root_dir / "RELEASE_NOTES.md"
+    _ensure_parent(notes_path, dirs_created)
+    notes_path.write_text(notes_text, encoding="utf-8")
+    logger.info(f"Release notes written to: {notes_path.as_posix()}")
+
+    # print warnings
+    if all_warnings:
+        console.print(
+            f"\n[bold yellow]⚠️  {len(all_warnings)} warning(s) during package creation:[/bold yellow]"
+        )
+        for w in all_warnings:
+            console.print(f"  - {w}", style="yellow")
+
+
+# ---------------------------------------------------------------------------
+# Handlers for table and deletion changes
+# ---------------------------------------------------------------------------
+
+
+def _handle_table_change(
+    change: git.GitChangedPath,
+    repo: git.Repo,
+    pkg_root_dir: Path,
+    steps_subdir: Path,
+    metadata_dir: Path,
+    *,
+    ts: datetime,
+    warnings: list[str],
+    dirs_created: set[Path],
+    baseline_commit: str,
+):
+    """Handle a changed or added table file.
+
+    For **new** tables we simply copy the DDL as-is.
+    For **modified** tables we parse old & new DDL, compute the diff,
+    and generate the appropriate change script.
+    """
+
+    db_name = change.abs_path.parent.name
+    table_file_name = change.abs_path.name
+    table_stem = change.abs_path.stem
+
+    # read current (new) version
+    current_path = repo.repo_dir / change.rel_path
+    new_ddl_text = current_path.read_text(encoding="utf-8", errors="strict")
+
+    # try to read old version from baseline commit
+    old_ddl_text = repo.get_file_content_at_commit(
+        baseline_commit, change.rel_path,
+    )
+
+    if old_ddl_text is None:
+        # new table — copy DDL as-is
+        logger.info(f"new table: {change.rel_path}")
+        target = pkg_root_dir / steps_subdir / PKG_STP_TABLES / db_name / table_file_name
+        _ensure_parent(target, dirs_created)
+        target.write_text(new_ddl_text, encoding="utf-8")
+        return
+
+    # parse both versions
+    old_parsed = table_parser.parse_table_ddl(old_ddl_text)
+    new_parsed = table_parser.parse_table_ddl(new_ddl_text)
+
+    if old_parsed is None or new_parsed is None:
+        logger.warning(
+            f"could not parse table DDL for {change.rel_path}, copying as-is"
+        )
+        target = pkg_root_dir / steps_subdir / PKG_STP_TABLES / db_name / table_file_name
+        _ensure_parent(target, dirs_created)
+        shutil.copy(current_path, target)
+        return
+
+    # diff
+    diff = table_differ.diff_tables(old_parsed, new_parsed)
+
+    if diff.kind == table_differ.TableChangeKind.NO_CHANGE:
+        logger.info(f"no effective change for table: {change.rel_path}")
+        return
+
+    if diff.kind == table_differ.TableChangeKind.TABLE_STRUCTURE_CHANGED:
+        logger.info(f"structural change for table: {change.rel_path}")
+        script, script_warnings = change_script_gen.generate_table_change_script(
+            old_parsed, new_parsed, diff, ts=ts,
+        )
+        warnings.extend(script_warnings)
+
+        # write change script
+        change_file = f"{table_stem}_change.sql"
+        target = pkg_root_dir / steps_subdir / PKG_STP_TABLES / db_name / change_file
+        _ensure_parent(target, dirs_created)
+        target.write_text(script, encoding="utf-8")
+
+        # write drop-backup script
+        drop_bkp = change_script_gen.generate_drop_backup_script(new_parsed, ts=ts)
+        drop_file = f"{table_stem}_drop_bkp.sql"
+        drop_target = (
+            pkg_root_dir / steps_subdir / PKG_STP_DROP_BACKUPS / db_name / drop_file
+        )
+        _ensure_parent(drop_target, dirs_created)
+        drop_target.write_text(drop_bkp, encoding="utf-8")
+
+    elif diff.kind == table_differ.TableChangeKind.NON_STRUCTURAL_CHANGE:
+        logger.info(f"non-structural change for table: {change.rel_path}")
+        script = change_script_gen.generate_non_structural_change_script(
+            old_parsed, new_parsed, diff, ts=ts,
+        )
+        change_file = f"{table_stem}_change.sql"
+        target = pkg_root_dir / steps_subdir / PKG_STP_TABLES / db_name / change_file
+        _ensure_parent(target, dirs_created)
+        target.write_text(script, encoding="utf-8")
+
+
+def _handle_deletion(
+    change: git.GitChangedPath,
+    repo: git.Repo,
+    pkg_root_dir: Path,
+    steps_subdir: Path,
+    metadata_dir: Path,
+    *,
+    ts: datetime,
+    warnings: list[str],
+    dirs_created: set[Path],
+    baseline_commit: str,
+):
+    """Handle a deleted file.
+
+    - Tables → RENAME … _obsolete<ts>.
+    - Other objects → DROP statement.
+    """
+
+    db_name = change.abs_path.parent.name
+    obj_stem = change.abs_path.stem
+    suffix = change.abs_path.suffix.lower()
+
+    if _is_table_file(change.abs_path):
+        # read old version to get the table name
+        old_ddl_text = repo.get_file_content_at_commit(
+            baseline_commit, change.rel_path,
         )
 
-        parent = copy_to.parent
-        if parent not in dirs:
-            parent.mkdir(exist_ok=True, parents=True)
-            dirs.add(parent)
+        table_name = obj_stem
+        database_name: str | None = db_name
+        if old_ddl_text:
+            parsed = table_parser.parse_table_ddl(old_ddl_text)
+            if parsed:
+                table_name = parsed.table_name
+                database_name = parsed.database_name or db_name
 
-        shutil.copy(copy_from, copy_to)
+        script = change_script_gen.generate_table_obsolete_script(
+            database_name, table_name, ts=ts,
+        )
+        drop_file = f"{obj_stem}_obsolete.sql"
+        target = pkg_root_dir / steps_subdir / PKG_STP_DROPS / db_name / drop_file
+        _ensure_parent(target, dirs_created)
+        target.write_text(script, encoding="utf-8")
+    else:
+        # non-table object — generate DROP
+        obj_type = fsystem.EXT_TO_TYPE.get(suffix)
+        if obj_type is None:
+            logger.warning(f"cannot determine object type for: {change.rel_path}")
+            return
+        script = change_script_gen.generate_drop_script(
+            db_name, obj_stem, obj_type,
+        )
+        drop_file = f"{obj_stem}_drop.sql"
+        target = pkg_root_dir / steps_subdir / PKG_STP_DROPS / db_name / drop_file
+        _ensure_parent(target, dirs_created)
+        target.write_text(script, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _resolve_baseline_commit(
+    repo: git.Repo,
+    diff_against: str,
+    diff_ident: str,
+) -> str:
+    """Resolve the baseline commit SHA so we can retrieve old file versions."""
+
+    if diff_against == "commit":
+        return diff_ident
+    elif diff_against == "branch":
+        feature_branch = repo.get_current_branch()
+        return repo.get_merge_base(diff_ident, feature_branch)
+    else:
+        raise exc.DOperationsError(
+            f"diff_against: should be one of ('commit','branch'): {diff_against}"
+        )
+
+
+def _ensure_parent(path: Path, dirs_created: set[Path]):
+    """Create parent directories if needed, tracking which ones were created."""
+    parent = path.parent
+    if parent not in dirs_created:
+        parent.mkdir(exist_ok=True, parents=True)
+        dirs_created.add(parent)
 
 
 def _rel_path_in_package(
@@ -132,12 +438,11 @@ def _rel_path_in_package(
     subdir_list: Iterable[str | Path] | None = None,
 ) -> Path:
     # check if the path is in metadata directory
-    # if it is, prepare it as the package
+    # if it is, prepare it as the package using enhanced step folders
     if src_file_absp.is_relative_to(metadata_dir_absp):
-        # FIXME: tight coupling, also see test cases!
-        step_name = fsystem.EXT_TO_STEP.get(
-            src_file_absp.suffix,
-            fsystem.STP_GENERIC_SQL,
+        step_name = _EXT_TO_PKG_STEP.get(
+            src_file_absp.suffix.lower(),
+            PKG_STP_GENERIC_SQL,
         )
         db_name = src_file_absp.parent.name
         return steps_subdir / step_name / db_name / src_file_absp.name
