@@ -180,8 +180,18 @@ def copy(
         git.FileStatus.UNMERGED,
     }
 
+    # Build abs_metadata_dir WITHOUT .resolve() – c.abs_path (from the git
+    # module) is constructed as ``repo.repo_dir / rel_path`` which is also
+    # NOT resolved.  Using .resolve() here would follow junctions / symlinks
+    # (common on Windows with OneDrive Desktop redirect) and produce a
+    # different prefix, causing is_relative_to() to fail.
+    abs_metadata_dir = (
+        metadata_dir
+        if metadata_dir.is_absolute()
+        else repo.repo_dir / metadata_dir
+    )
+
     for c in changes:
-        abs_metadata_dir = metadata_dir.resolve() if metadata_dir.is_absolute() else (repo.repo_dir / metadata_dir).resolve()
         is_meta = _is_metadata_file(c.abs_path, abs_metadata_dir)
 
         # --- DELETED files ---
