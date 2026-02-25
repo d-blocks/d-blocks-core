@@ -191,13 +191,25 @@ def copy(
         else repo.repo_dir / metadata_dir
     )
 
+    # Build the list of "known code directories" – these are the
+    # directories whose contents should receive step-folder packaging.
+    # Both metadata_dir and any include_only directories qualify.
+    code_dirs: list[Path] = [abs_metadata_dir]
+    if include_only:
+        for io in include_only:
+            p = Path(io) if isinstance(io, str) else io
+            code_dirs.append(p if p.is_absolute() else repo.repo_dir / p)
+
+    def _is_in_code_dir(abs_path: Path) -> bool:
+        return any(abs_path.is_relative_to(d) for d in code_dirs)
+
     for c in changes:
-        is_meta = _is_metadata_file(c.abs_path, abs_metadata_dir)
+        in_code_dir = _is_in_code_dir(c.abs_path)
 
         # --- DELETED files ---
         if c.change == git.FileStatus.DELETED:
-            if not is_meta:
-                logger.debug(f"skip deleted non-metadata file: {c.rel_path}")
+            if not in_code_dir:
+                logger.debug(f"skip deleted file outside code dirs: {c.rel_path}")
                 continue
             _handle_deletion(
                 c, repo, pkg_root_dir, steps_subdir, metadata_dir,
@@ -216,19 +228,20 @@ def copy(
             logger.warning(f"file does not exist: {copy_from}")
             continue
 
-        if is_meta and _is_table_file(c.abs_path):
+        if _is_table_file(c.abs_path):
             _handle_table_change(
                 c, repo, pkg_root_dir, steps_subdir, metadata_dir,
                 ts=ts, warnings=all_warnings, dirs_created=dirs_created,
                 baseline_commit=baseline_commit,
             )
         else:
-            # non-table object → copy as-is
+            # non-table object → copy into step-folder structure
             copy_to = pkg_root_dir / _rel_path_in_package(
                 repo_dir_absp=repo.repo_dir,
                 src_file_absp=c.abs_path,
                 metadata_dir_absp=abs_metadata_dir,
                 steps_subdir=steps_subdir,
+                code_dirs=code_dirs,
             )
             _ensure_parent(copy_to, dirs_created)
             shutil.copy(copy_from, copy_to)
@@ -446,16 +459,20 @@ def _rel_path_in_package(
     metadata_dir_absp: Path,
     steps_subdir: Path,
     subdir_list: Iterable[str | Path] | None = None,
+    code_dirs: Iterable[Path] | None = None,
 ) -> Path:
-    # check if the path is in metadata directory
-    # if it is, prepare it as the package using enhanced step folders
-    if src_file_absp.is_relative_to(metadata_dir_absp):
-        step_name = _EXT_TO_PKG_STEP.get(
-            src_file_absp.suffix.lower(),
-            PKG_STP_GENERIC_SQL,
-        )
-        db_name = src_file_absp.parent.name
-        return steps_subdir / step_name / db_name / src_file_absp.name
+    # Check if the path lives in any recognised code directory.
+    # All code directories receive the step-folder package layout
+    # (e.g. db/teradata/020-views-indices/<db>/<file>).
+    _code_dirs = list(code_dirs) if code_dirs else [metadata_dir_absp]
+    for cd in _code_dirs:
+        if src_file_absp.is_relative_to(cd):
+            step_name = _EXT_TO_PKG_STEP.get(
+                src_file_absp.suffix.lower(),
+                PKG_STP_GENERIC_SQL,
+            )
+            db_name = src_file_absp.parent.name
+            return steps_subdir / step_name / db_name / src_file_absp.name
 
     # if subdir list was given, check if we are relative to one of them
     if subdir_list:
