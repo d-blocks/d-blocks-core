@@ -28,7 +28,7 @@ debbie = 'dblocks_core.script.dbe:main'
 dbexp = 'dblocks_core.script.dbexp:main'
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.10,<3.14"
 teradatasql = "^20.0.0.20"
 pyaml = "^24.9.0"
 attrs = "^24.2.0"

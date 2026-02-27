@@ -16,6 +16,7 @@ from dblocks_core.git import git
 from dblocks_core.model import plugin_model
 from dblocks_core.parse import prsr_simple
 from dblocks_core.script.workflow import (
+    cmd_branch_status,
     cmd_deployment,
     cmd_detag,
     cmd_env_def_deployment,
@@ -23,7 +24,6 @@ from dblocks_core.script.workflow import (
     cmd_env_def_extraction,
     cmd_extraction,
     cmd_git_copy_changed,
-    cmd_branch_status,
     cmd_init,
     cmd_pkg_deployment,
     cmd_quickstart,
@@ -133,6 +133,12 @@ def env_extract(
         bool,
         typer.Option(help="Allow deletion of objects from git."),
     ] = True,
+    blacklisted_db_file: Annotated[
+        str | None,
+        typer.Option(
+            help="Path to the filename that contains blacklisted databases - one per line."
+        ),
+    ] = None,
 ):
     """
     Extraction of the database based on an environment name. The extraction can be
@@ -193,6 +199,9 @@ def env_extract(
     )
     plugins = plugins_writer + plugins_extractor
 
+    # attempt to read blacklist from file, if path is given
+    blacklisted = cmd_extraction.read_blacklist(blacklisted_db_file)
+
     with context.FSContext(
         name="command-extract",
         directory=cfg.ctx_dir,
@@ -212,6 +221,7 @@ def env_extract(
             plugins=plugins,
             from_file=from_file,
             allow_drop=allow_drop,
+            blacklisted_databases=blacklisted,
         )
     ctx.done()
 
@@ -312,12 +322,10 @@ def env_def_extract(
     ],
     *,
     commit: Annotated[
-        bool, 
-        typer.Option(help="Commit changes to the repository.")
+        bool, typer.Option(help="Commit changes to the repository.")
     ] = True,
     assume_yes: Annotated[
-        bool, 
-        typer.Option(help="Do not ask for confirmations.")
+        bool, typer.Option(help="Do not ask for confirmations.")
     ] = False,
     filter_databases: Annotated[
         str | None,
@@ -347,60 +355,60 @@ def env_def_extract(
     """
     Extract environment definitions (databases, users, roles, profiles, privileges)
     from Teradata and store them as TOML configuration files.
-    
+
     This command extracts the structure of database environments (not the objects
     like tables/views, but the databases, users, roles, etc. themselves) and stores
     them in TOML format for version control and deployment.
-    
+
     The scope of extraction is determined by the 'extraction.databases' configuration
     in dblocks.toml, following the same logic as env-extract. Only root databases/users
     defined in the configuration and their children will be extracted.
-    
+
     Additional filters can be applied using --filter-databases, --filter-roles, and
     --filter-profiles to narrow down the extraction scope.
     """
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
-    
+
     # Determine env_def_dir from config
-    if hasattr(env.writer, 'env_def_dir'):
+    if hasattr(env.writer, "env_def_dir"):
         env_def_dir = env.writer.env_def_dir
         if not env_def_dir.is_absolute():
             env_def_dir = cfg.metadata_dir / env_def_dir
     else:
         # Fallback to default
         env_def_dir = cfg.metadata_dir / "env_def"
-    
+
     logger.info(f"Environment definition directory: {env_def_dir}")
-    
+
     # Git repo
     repo = git.repo_factory(raise_on_error=False)
     if repo is not None and repo.is_dirty():
         logger.warning("Repository is not clean!")
-    
+
     # Confirmation
     if not assume_yes:
         console.print("\n[bold yellow]Environment Definition Extraction[/bold yellow]")
         console.print(f"Environment: [bold]{environment}[/bold]")
         console.print(f"Target directory: {env_def_dir}")
         console.print(f"Scope: {env.extraction.databases} (and their children)")
-        
+
         if filter_databases:
             console.print(f"Database filter: {filter_databases}")
         if filter_roles:
             console.print(f"Role filter: {filter_roles}")
         if filter_profiles:
             console.print(f"Profile filter: {filter_profiles}")
-        
+
         answer = Prompt.ask(
             "\n[bold]Do you want to proceed?[/bold]",
             choices=["yes", "no"],
-            default="no"
+            default="no",
         )
-        
+
         if answer.lower() != "yes":
             raise exc.DOperationsError("Extraction cancelled by user")
-    
+
     # Context
     with context.FSContext(
         name=f"env-def-extract-{environment}",
@@ -408,7 +416,7 @@ def env_def_extract(
         no_exception_is_success=True,
     ) as ctx:
         ext = dbi.dbi_factory(cfg, environment)
-        
+
         cmd_env_def_extraction.run_env_def_extraction(
             ctx=ctx,
             env=env,
@@ -421,7 +429,7 @@ def env_def_extract(
             filter_roles=filter_roles,
             filter_profiles=filter_profiles,
         )
-    
+
     ctx.done()
     console.print("Environment definition extraction completed", style="bold green")
 
@@ -437,8 +445,7 @@ def env_def_deploy(
     ],
     *,
     assume_yes: Annotated[
-        bool, 
-        typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+        bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
     ] = False,
     if_exists: Annotated[
         str,
@@ -447,43 +454,43 @@ def env_def_deploy(
         ),
     ] = "skip",
     dry_run: Annotated[
-        bool, 
-        typer.Option(help="Dry run only simulates deployment without making changes.")
+        bool,
+        typer.Option(help="Dry run only simulates deployment without making changes."),
     ] = False,
 ):
     """
     Deploy environment definitions (databases, users, roles, profiles, privileges)
     from TOML configuration files to Teradata database.
-    
+
     This command reads TOML configuration files and creates/updates the database
     environment structures accordingly. It respects the deployment order:
     profiles -> roles -> databases -> users -> privileges.
     """
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
-    
+
     # Determine env_def_dir from config
-    if hasattr(env.writer, 'env_def_dir'):
+    if hasattr(env.writer, "env_def_dir"):
         env_def_dir = env.writer.env_def_dir
         if not env_def_dir.is_absolute():
             env_def_dir = cfg.metadata_dir / env_def_dir
     else:
         # Fallback to default
         env_def_dir = cfg.metadata_dir / "env_def"
-    
+
     logger.info(f"Environment definition directory: {env_def_dir}")
-    
+
     # Sanity check
     if not env_def_dir.exists():
         message = f"Environment definition directory does not exist: {env_def_dir}"
         raise exc.DOperationsError(message)
-    
+
     if not env_def_dir.is_dir():
         message = f"Not a directory: {env_def_dir}"
         raise exc.DOperationsError(message)
-    
+
     logger.warning("Starting environment definition deployment")
-    
+
     # Context
     with context.FSContext(
         name=f"env-def-deploy-{environment}",
@@ -491,7 +498,7 @@ def env_def_deploy(
         no_exception_is_success=False,
     ) as ctx:
         ext = dbi.dbi_factory(cfg, environment)
-        
+
         results = cmd_env_def_deployment.deploy_env_def(
             deploy_dir=env_def_dir,
             cfg=cfg,
@@ -503,7 +510,7 @@ def env_def_deploy(
             assume_yes=assume_yes,
             dry_run=dry_run,
         )
-        
+
         if len(results["failed"]) == 0:
             console.print("Successful deployment", style="bold green")
             ctx.done()
@@ -523,50 +530,49 @@ def env_def_destroy(
     ],
     *,
     assume_yes: Annotated[
-        bool, 
-        typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
+        bool, typer.Option(help="USE CAREFULLY. Do not ask for confirmation.")
     ] = False,
     dry_run: Annotated[
-        bool, 
-        typer.Option(help="Dry run only simulates destruction without making changes.")
+        bool,
+        typer.Option(help="Dry run only simulates destruction without making changes."),
     ] = False,
 ):
     """
     Destroy environment definitions (databases, users, roles, profiles)
     from Teradata database based on TOML configuration files.
-    
+
     This command reads TOML configuration files and removes the database
     environment structures accordingly. It respects the destruction order:
     child databases/users -> parent databases/users -> roles -> profiles.
-    
+
     WARNING: This is a destructive operation that will permanently delete
     all specified objects and their contents!
     """
     cfg = config.load_config()
     env = config.get_environment_from_config(cfg, environment)
-    
+
     # Determine env_def_dir from config
-    if hasattr(env.writer, 'env_def_dir'):
+    if hasattr(env.writer, "env_def_dir"):
         env_def_dir = env.writer.env_def_dir
         if not env_def_dir.is_absolute():
             env_def_dir = cfg.metadata_dir / env_def_dir
     else:
         # Fallback to default
         env_def_dir = cfg.metadata_dir / "env_def"
-    
+
     logger.info(f"Environment definition directory: {env_def_dir}")
-    
+
     # Sanity check
     if not env_def_dir.exists():
         message = f"Environment definition directory does not exist: {env_def_dir}"
         raise exc.DOperationsError(message)
-    
+
     if not env_def_dir.is_dir():
         message = f"Not a directory: {env_def_dir}"
         raise exc.DOperationsError(message)
-    
+
     logger.warning("Starting environment definition destruction")
-    
+
     # Context
     with context.FSContext(
         name=f"env-def-destroy-{environment}",
@@ -574,7 +580,7 @@ def env_def_destroy(
         no_exception_is_success=False,
     ) as ctx:
         ext = dbi.dbi_factory(cfg, environment)
-        
+
         results = cmd_env_def_destroy.destroy_env_def(
             deploy_dir=env_def_dir,
             cfg=cfg,
@@ -585,7 +591,7 @@ def env_def_destroy(
             assume_yes=assume_yes,
             dry_run=dry_run,
         )
-        
+
         if len(results["failed"]) == 0:
             console.print("Successful destruction", style="bold green")
             ctx.done()
@@ -904,8 +910,8 @@ def branch_status(
         bool,
         typer.Option(
             "--remote/--no-remote",
-            help="Include remote branches in analysis. Default is --remote."
-        )
+            help="Include remote branches in analysis. Default is --remote.",
+        ),
     ] = True,
 ):
     """Analyze Git branches and their merge status."""

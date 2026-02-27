@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import cattrs
 from attrs import frozen
@@ -33,6 +34,7 @@ def run_extraction(
     log_each: int = 5,
     commit: bool = False,
     allow_drop: bool = True,
+    blacklisted_databases: set[str] | None = None,
 ):
     """
     Executes a full or incremental extraction of the database.
@@ -150,7 +152,7 @@ def run_extraction(
         d.database_name.upper(): d.parent_tags_in_scope for d in env_data.all_databases
     }
 
-    # prep for extractoin
+    # prep for extraction
     started_when = datetime.now()
     db, prev_db = None, None
     in_scope = [obj for obj in env_data.all_objects if obj.in_scope]
@@ -180,14 +182,24 @@ def run_extraction(
             except KeyError:
                 obj.in_scope = False
 
+    # Check for blacklisted databases
+    if blacklisted_databases:
+        _blacklisted = blacklisted_databases if blacklisted_databases else set()
+        _blacklisted = {db.upper() for db in _blacklisted}
+        for obj in in_scope:
+            database = obj.database_name.upper()
+            if database in _blacklisted:
+                obj.in_scope = False
+
     # run the extraction - this loops through all objects in scope
     logger.info(
-        f"total lenght of the queue is: {len([ e for e in in_scope if e.in_scope])}"
+        f"total lenght of the queue is: {len([e for e in in_scope if e.in_scope])}"
     )
 
     db = "n/a"
     for i, obj in enumerate(in_scope, start=1):
         db = obj.database_name
+
         if not obj.in_scope:
             continue
 
@@ -320,3 +332,22 @@ def get_filter_from_file(from_file: str) -> _FilterFromFile | None:
 
     logger.info(f"total count of objects: {total_count}")
     return _FilterFromFile(databases=sorted(list(databases)), objects=objects)
+
+
+def read_blacklist(path: str | Path | None) -> set[str] | None:
+    if not path:
+        return None
+
+    _path = path if isinstance(path, Path) else Path(path)
+    logger.info(f"reading blacklist from {_path}")
+    blacklist = set()
+    with _path.open(encoding="utf-8", errors="strict") as h:
+        for line in h:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                continue
+            blacklist.add(line)
+    logger.info(f"blacklist length: {len(blacklist)}")
+    return blacklist
