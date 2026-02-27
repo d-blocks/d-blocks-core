@@ -185,6 +185,7 @@ def get_databases_in_scope(
                 db.database_details,
                 meta_model.DescribedTeradataDatabase,
             ):
+                logger.debug("not a TD database, continue")
                 continue
 
             # pokud je owner této databáze mezi kořenovými databázemi,
@@ -205,9 +206,11 @@ def get_databases_in_scope(
         # pokud se již nezměnil seznam databázi in scope, končíme
         logger.debug(f"iteration: {i}, {len(in_scope)=}")
         if prev_len == len(in_scope):
+            logger.debug("break out of the loop")
             break
 
-        return in_scope  # type: ignore
+    logger.debug(f"return scope: {len(in_scope)=}")
+    return in_scope  # type: ignore
 
 
 def set_database_parents(
@@ -237,6 +240,7 @@ def set_database_parents(
     """
 
     # set dict of parents for each db
+    logger.debug("accepting scope: len={len(dbs_in_scope)}")
     parents = {db.database_tag: db.parent_tag for db in dbs_in_scope}
     logger.trace(parents)
     for db in dbs_in_scope:
@@ -244,11 +248,14 @@ def set_database_parents(
         path_to_db = []
         while True:
             try:
+                logger.debug(f"{db=} {this_parent=}")
                 new_parent = parents[this_parent]
                 path_to_db.append(this_parent)
+                if this_parent == new_parent:
+                    logger.debug(f"root found: {this_parent}")
+                    break
                 this_parent = new_parent
             except KeyError:
                 break
         db.parent_tags_in_scope = path_to_db
-        logger.trace(db)
         logger.trace(db)
