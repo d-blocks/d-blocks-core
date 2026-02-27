@@ -62,6 +62,10 @@ class DBStatementError(DBError):
         super().__init__(message)
 
 
+class DBExtractRecoverableError(DBStatementError):
+    "recoverable extraction error"
+
+
 class DBCannotConnect(DBError):
     "Can not connect to the database."
 
@@ -72,6 +76,7 @@ class DBObjectDoesNotExist(DBError):
     "Object in database does not exist."
 
     pass
+
 
 class DBDoesNotExist(DBError):
     "Database does not exist."

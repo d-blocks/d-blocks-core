@@ -48,6 +48,13 @@ ERR_CODE_NO_ACCESS = "3523"
 ERR_CODE_REF_INTEGRITY_VIOLATION = "5313"
 ERR_CODE_COLUMN_NOT_FOUND = "5628"
 
+RECOVERABLE_ERRORS = {
+    "3869",  # A system journal table cannot be accessed via Teradata SQL.
+    "5535",  # No SPL source text available for stored procedure
+    "6878",  # Show Type operation is not allowed on Internal type UDT
+    "9134",  # Show Function is not supported for Fast Path UDFs
+    "4969",  # Native Object Store Request Timeout:
+}
 STATEMENT_ERRORS = (
     ERR_CODE_COLUMN_NOT_FOUND,
     ERR_CODE_REF_INTEGRITY_VIOLATION,
@@ -179,6 +186,10 @@ def translate_error():
         # not a TD error, can not translate
         if not isinstance(cause, teradatasql.Error):  # type: ignore
             raise
+
+        if err_code in RECOVERABLE_ERRORS:
+            msg = f"{err_code}: {err_desc}"
+            raise exc.DBExtractRecoverableError(msg)
 
         if err_code == ERR_CODE_DOES_NOT_EXIST:
             logger.info("Code does not exist")
@@ -381,6 +392,9 @@ class TeraDBI(contract.AbstractDBI):
                 basic_definition=ddl,
                 additional_details=details,
             )
+        except exc.DBExtractRecoverableError as err:
+            logger.error(err.message)
+            return None
         except exc.DBAccessRightsError as err:
             logger.error(err.message)
             return None
@@ -1031,7 +1045,7 @@ class TeraDBI(contract.AbstractDBI):
                     all_stats = "".join(rows)
 
         # pass no stats silently
-        except exc.DBNoStatsDefined as err:
+        except exc.DBNoStatsDefined:
             return []
 
         # log no access rights but do not crash
@@ -1099,8 +1113,7 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def get_databases(
-        self, 
-        filter_databases: str | None = None
+        self, filter_databases: str | None = None
     ) -> list[meta_model.DescribedDatabase]:
         """
         Retrieves a list of databases from the Teradata system.
@@ -1128,17 +1141,17 @@ class TeraDBI(contract.AbstractDBI):
                 dbKind AS db_kind
             FROM DBC.databasesV
         """
-        
+
         if filter_databases:
             sql += " WHERE databaseName LIKE :filter_databases"
-        
+
         sql += " ORDER BY databaseName"
-        
+
         if filter_databases:
             stmt = sa.text(sql).bindparams(filter_databases=filter_databases)
         else:
             stmt = sa.text(sql)
-            
+
         with self.engine.connect() as con:
             data = [
                 meta_model.DescribedDatabase(
@@ -1258,14 +1271,16 @@ class TeraDBI(contract.AbstractDBI):
         return statements
 
     @translate_error()
-    def get_users(self, filter_users: str | None = None) -> list[meta_model.DescribedUser]:
+    def get_users(
+        self, filter_users: str | None = None
+    ) -> list[meta_model.DescribedUser]:
         """
         Retrieves detailed information about all users.
         Uses DBC.UsersV which contains user-specific attributes like profile and account.
-        
+
         Args:
             filter_users: Optional filter for user names (using SQL LIKE pattern)
-            
+
         Returns:
             List of DescribedUser objects with Teradata-specific details
         """
@@ -1281,29 +1296,33 @@ class TeraDBI(contract.AbstractDBI):
                 DefaultAccount as account_name
             FROM DBC.UsersV
         """
-        
+
         if filter_users:
             sql += " WHERE UserName LIKE :filter_users"
-        
+
         sql += " ORDER BY UserName"
-        
+
         if filter_users:
             stmt = sa.text(sql).bindparams(filter_users=filter_users)
         else:
             stmt = sa.text(sql)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             return [
                 meta_model.DescribedUser(
                     user_name=row.user_name.strip() if row.user_name else "",
-                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    comment_string=row.comment_string.strip()
+                    if row.comment_string
+                    else None,
                     user_details=meta_model.DescribedTeradataUser(
                         owner_name="",  # Not available in DBC.UsersV, users don't have owners
                         perm_space=row.perm_space,
                         spool_space=row.spool_space,
                         temp_space=row.temp_space,
-                        default_database=row.default_database.strip() if row.default_database else None,
+                        default_database=row.default_database.strip()
+                        if row.default_database
+                        else None,
                         profile=row.profile_name.strip() if row.profile_name else None,
                         account=row.account_name.strip() if row.account_name else None,
                         db_kind="U",  # Not in UsersV, but we know these are users
@@ -1313,13 +1332,15 @@ class TeraDBI(contract.AbstractDBI):
             ]
 
     @translate_error()
-    def get_roles(self, filter_roles: str | None = None) -> list[meta_model.DescribedRole]:
+    def get_roles(
+        self, filter_roles: str | None = None
+    ) -> list[meta_model.DescribedRole]:
         """
         Retrieves information about all roles.
-        
+
         Args:
             filter_roles: Optional filter for role names (using SQL LIKE pattern)
-        
+
         Returns:
             List of DescribedRole objects with Teradata-specific details
         """
@@ -1329,36 +1350,40 @@ class TeraDBI(contract.AbstractDBI):
                 commentString as comment_string
             FROM DBC.roles
         """
-        
+
         if filter_roles:
             sql += " WHERE roleName LIKE :filter_roles"
-        
+
         sql += " ORDER BY roleName"
-        
+
         if filter_roles:
             stmt = sa.text(sql).bindparams(filter_roles=filter_roles)
         else:
             stmt = sa.text(sql)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             return [
                 meta_model.DescribedRole(
                     role_name=row.role_name.strip() if row.role_name else "",
-                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    comment_string=row.comment_string.strip()
+                    if row.comment_string
+                    else None,
                     role_details=meta_model.DescribedTeradataRole(),
                 )
                 for row in rows
             ]
 
     @translate_error()
-    def get_profiles(self, filter_profiles: str | None = None) -> list[meta_model.DescribedProfile]:
+    def get_profiles(
+        self, filter_profiles: str | None = None
+    ) -> list[meta_model.DescribedProfile]:
         """
         Retrieves information about all profiles.
-        
+
         Args:
             filter_profiles: Optional filter for profile names (using SQL LIKE pattern)
-        
+
         Returns:
             List of DescribedProfile objects with Teradata-specific details
         """
@@ -1372,28 +1397,34 @@ class TeraDBI(contract.AbstractDBI):
                 defaultDatabase as default_database
             FROM DBC.profiles
         """
-        
+
         if filter_profiles:
             sql += " WHERE profileName LIKE :filter_profiles"
-        
+
         sql += " ORDER BY profileName"
-        
+
         if filter_profiles:
             stmt = sa.text(sql).bindparams(filter_profiles=filter_profiles)
         else:
             stmt = sa.text(sql)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             return [
                 meta_model.DescribedProfile(
                     profile_name=row.profile_name.strip() if row.profile_name else "",
-                    comment_string=row.comment_string.strip() if row.comment_string else None,
+                    comment_string=row.comment_string.strip()
+                    if row.comment_string
+                    else None,
                     profile_details=meta_model.DescribedTeradataProfile(
                         spool_space=row.spool_space,
                         temp_space=row.temp_space,
-                        account=row.default_account.strip() if row.default_account else None,
-                        default_database=row.default_database.strip() if row.default_database else None,
+                        account=row.default_account.strip()
+                        if row.default_account
+                        else None,
+                        default_database=row.default_database.strip()
+                        if row.default_database
+                        else None,
                     ),
                 )
                 for row in rows
@@ -1401,17 +1432,15 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def get_privileges_for_grantee(
-        self, 
-        grantee_name: str,
-        grantee_type: str = "user"
+        self, grantee_name: str, grantee_type: str = "user"
     ) -> meta_model.DescribedPrivileges:
         """
         Retrieves all privileges for a specific grantee (role, user, or database).
-        
+
         Args:
             grantee_name: Name of the grantee
             grantee_type: Type of grantee ('user', 'role', or 'database')
-            
+
         Returns:
             DescribedPrivileges object containing all privilege grants
         """
@@ -1428,28 +1457,36 @@ class TeraDBI(contract.AbstractDBI):
             ORDER BY DatabaseName, TableName, AccessRight
         """
         stmt = sa.text(sql).bindparams(grantee_name=grantee_name)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             privilege_grants = []
             for row in rows:
                 grantable_value = row.grantable.strip().upper() if row.grantable else ""
-                is_grantable = grantable_value == 'Y'
-                
+                is_grantable = grantable_value == "Y"
+
                 # Debug logging for grant authority
                 if grantable_value:
-                    logger.debug(f"Privilege {row.privilege_type} on {row.object_database}: GrantAuthority={repr(grantable_value)}, grantable={is_grantable}")
-                
+                    logger.debug(
+                        f"Privilege {row.privilege_type} on {row.object_database}: GrantAuthority={repr(grantable_value)}, grantable={is_grantable}"
+                    )
+
                 privilege_grants.append(
                     meta_model.PrivilegeGrant(
-                        privilege_type=row.privilege_type.strip() if row.privilege_type else "",
-                        object_database=row.object_database.strip() if row.object_database else None,
-                        object_name=row.object_name.strip() if row.object_name else None,
+                        privilege_type=row.privilege_type.strip()
+                        if row.privilege_type
+                        else "",
+                        object_database=row.object_database.strip()
+                        if row.object_database
+                        else None,
+                        object_name=row.object_name.strip()
+                        if row.object_name
+                        else None,
                         object_type=None,  # tableKind not available in DBC.AllRightsV
                         grantable=is_grantable,
                     )
                 )
-            
+
             return meta_model.DescribedPrivileges(
                 grantee_name=grantee_name,
                 grantee_type=grantee_type,
@@ -1458,16 +1495,13 @@ class TeraDBI(contract.AbstractDBI):
             )
 
     @translate_error()
-    def get_role_privileges(
-        self, 
-        role_name: str
-    ) -> meta_model.DescribedPrivileges:
+    def get_role_privileges(self, role_name: str) -> meta_model.DescribedPrivileges:
         """
         Retrieves all privileges for a specific role from DBC.AllRoleRightsV.
-        
+
         Args:
             role_name: Name of the role
-            
+
         Returns:
             DescribedPrivileges object containing all privilege grants for the role
         """
@@ -1482,21 +1516,27 @@ class TeraDBI(contract.AbstractDBI):
             ORDER BY DatabaseName, TableName, AccessRight
         """
         stmt = sa.text(sql).bindparams(role_name=role_name)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             privilege_grants = []
             for row in rows:
                 privilege_grants.append(
                     meta_model.PrivilegeGrant(
-                        privilege_type=row.privilege_type.strip() if row.privilege_type else "",
-                        object_database=row.object_database.strip() if row.object_database else None,
-                        object_name=row.object_name.strip() if row.object_name else None,
+                        privilege_type=row.privilege_type.strip()
+                        if row.privilege_type
+                        else "",
+                        object_database=row.object_database.strip()
+                        if row.object_database
+                        else None,
+                        object_name=row.object_name.strip()
+                        if row.object_name
+                        else None,
                         object_type=None,
                         grantable=False,  # AllRoleRightsV doesn't provide grant option info
                     )
                 )
-            
+
             return meta_model.DescribedPrivileges(
                 grantee_name=role_name,
                 grantee_type="role",
@@ -1506,15 +1546,14 @@ class TeraDBI(contract.AbstractDBI):
 
     @translate_error()
     def get_role_memberships(
-        self, 
-        grantee_name: str
+        self, grantee_name: str
     ) -> meta_model.DescribedRoleMemberships:
         """
         Retrieves all role memberships for a specific user from DBC.RoleMembersV.
-        
+
         Args:
             grantee_name: Name of the user
-            
+
         Returns:
             DescribedRoleMemberships object containing all role assignments
         """
@@ -1528,21 +1567,23 @@ class TeraDBI(contract.AbstractDBI):
             ORDER BY RoleName
         """
         stmt = sa.text(sql).bindparams(grantee_name=grantee_name)
-        
+
         with self.engine.connect() as con:
             rows = con.execute(stmt).fetchall()
             role_grants = []
             for row in rows:
-                with_admin_value = row.with_admin.strip().upper() if row.with_admin else ""
-                is_with_admin = with_admin_value == 'Y'
-                
+                with_admin_value = (
+                    row.with_admin.strip().upper() if row.with_admin else ""
+                )
+                is_with_admin = with_admin_value == "Y"
+
                 role_grants.append(
                     meta_model.RoleGrant(
                         role_name=row.role_name.strip() if row.role_name else "",
                         with_admin=is_with_admin,
                     )
                 )
-            
+
             return meta_model.DescribedRoleMemberships(
                 grantee_name=grantee_name,
                 grantee_type="user",
